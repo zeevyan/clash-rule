@@ -113,6 +113,7 @@ DOMAIN-SUFFIX,missav.com
 DOMAIN-SUFFIX,misty.cx
 DOMAIN-SUFFIX,misakaf.org
 DOMAIN-SUFFIX,emby-mica-us-v1.mius.uk
+DOMAIN-KEYWORD,emby
 # ------------------------------------------------
 # 以下规则来源为ACL4SSR，仅删除部分重复
 # ABC
