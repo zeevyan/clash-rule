@@ -2,4 +2,7 @@
 DOMAIN-SUFFIX,weibo.cn
 DOMAIN-SUFFIX,weibo.com
 DOMAIN-SUFFIX,weibocdn.com
+DOMAIN-SUFFIX,stat.y.qq.com
+DOMAIN-SUFFIX,asr.cloud.tencent.com
+DOMAIN-SUFFIX,oth.str.mdt.qq.com
 DOMAIN-KEYWORD,weibo
