@@ -108,15 +108,7 @@ DOMAIN-SUFFIX,njav.tv
 # &gt; MISSAV
 DOMAIN-SUFFIX,missav.com
 
-# Emby
-# &gt; Misty
-DOMAIN-SUFFIX,misty.cx
-DOMAIN-SUFFIX,misakaf.org
-DOMAIN-SUFFIX,emby-mica-us-v1.mius.uk
-DOMAIN-KEYWORD,emby
-DOMAIN-SUFFIX,entry.zox.show
-DOMAIN-SUFFIX,ip.zox.show
-DOMAIN-SUFFIX,cf.zox.show
+
 # ------------------------------------------------
 # 以下规则来源为ACL4SSR，仅删除部分重复
 # ABC
