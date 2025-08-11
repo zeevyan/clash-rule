@@ -1,0 +1,16 @@
+proxy-groups:
+  - {name: 🚀 节点选择, type: select, proxies: [{providers_tags}], include-all-providers: true}
+  - {name: 🪟 微软服务, type: select, proxies: [🎯 全球直连, 🚀 节点选择]}
+  - {name: 📲 电报消息, type: select, proxies: [🎯 全球直连, 🚀 节点选择]}
+  - {name: 🌍 国外媒体, type: select, proxies: [🎯 全球直连, 🚀 节点选择]}
+  - {name: 🐟 漏网之鱼, type: select, proxies: [🚀 节点选择, {providers_tags}, 🎯 全球直连]}
+  - {name: 🟢 全球绕过, type: select, proxies: [PASS], hidden: true}
+  - {name: 🎯 全球直连, type: select, proxies: [DIRECT], hidden: true}
+rule-providers:
+
+rules:
+  - GEOIP,cn,🎯 全球直连
+  - GEOSITE,microsoft-cn,🪟 微软服务
+  - GEOSITE,media,🌍 国外媒体
+  - GEOIP,telegram,📲 电报消息,no-resolve
+  - MATCH,🐟 漏网之鱼
