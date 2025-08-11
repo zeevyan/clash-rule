@@ -85,11 +85,12 @@ rules:
 
   - RULE-SET,microsoft-cn,🪟 微软服务
   - RULE-SET,apple-cn,🍎 苹果服务
+  - RULE-SET,mediaip,🌍 国外媒体,no-resolve
   - RULE-SET,Proxymedia,🌍 国外媒体
   - RULE-SET,telegramip,📲 电报消息,no-resolve
   - RULE-SET,AI,🤖 人工智能
   - RULE-SET,Emby,🌍 Emby
   - GEOSITE,CN,🎯 全球直连
   - GEOSITE,geolocation-!cn,🚀 节点选择
-  - RULE-SET,cnip,🎯 全球直连
+  - RULE-SET,cnip,🎯 全球直连,no-resolve
   - MATCH,🐟 漏网之鱼
