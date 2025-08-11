@@ -1,13 +1,15 @@
 
 proxy-groups:
-  - {name:  节点选择, type: select, proxies: [{providers_tags}], include-all-providers: true}
-  - {name:  🪟 微软服务, type: select, proxies: [🎯 全球直连,  节点选择]}
-  - {name: 📲 电报消息, type: select, proxies: [🎯 全球直连,  节点选择]}
-  - {name:  苹果服务, type: select, proxies: [🎯 全球直连,  🚀 节点选择]}
-  - {name:  🌍 国外媒体, type: select, proxies: [🎯 全球直连,  🚀 节点选择]}
-  - {name:  🐟 漏网之鱼, type: select, proxies:  [🎯 全球直连,  🚀 节点选择]}
-  - {name:  🟢 全球绕过, type: select, proxies: [PASS], hidden: true}
-  - {name:  🎯 全球直连, type: select, proxies: [DIRECT], hidden: true}
+  - {name: 🚀 节点选择, type: select, proxies: [{providers_tags}], include-all-providers: true, direct}
+  - {name: 🪟 微软服务, type: select, proxies: [🎯 全球直连, {providers_tags}], include-all-providers: true}
+  - {name: 📲 电报消息, type: select, proxies: [🎯 全球直连, {providers_tags}], include-all-providers: true}
+  - {name: 🍎 苹果服务, type: select, proxies: [🎯 全球直连, {providers_tags}], include-all-providers: true}
+  - {name: 🌍 国外媒体, type: select, proxies: [🎯 全球直连, {providers_tags}], include-all-providers: true}
+  - {name: 🌍 Emby, type: select, proxies: [🎯 全球直连, {providers_tags}], include-all-providers: true}
+  - {name: 🤖 人工智能, type: select, proxies: [🎯 全球直连, {providers_tags}], include-all-providers: true}
+  - {name: 🐟 漏网之鱼, type: select, proxies: [🎯 全球直连, 🚀 节点选择]}
+  - {name: 🟢 全球绕过, type: select, proxies: [PASS], hidden: true}
+  - {name: 🎯 全球直连, type: select, proxies: [DIRECT], hidden: true}
 
 rule-providers:
   AI:
@@ -16,6 +18,22 @@ rule-providers:
     format: yaml
     path: './rules/AI.yaml'
     url: 'https://raw.githubusercontent.com/zeevyan/clash-rule/refs/heads/main/AI.yaml'
+    interval: 86400
+
+  apple-cn:
+    type: http
+    behavior: domain
+    format: mrs
+    path: ./rules/apple-cn.mrs
+    url: "https://github.com/DustinWin/ruleset_geodata/releases/download/mihomo-ruleset/apple-cn.mrs"
+    interval: 86400
+
+  microsoft-cn:
+    type: http
+    behavior: domain
+    format: mrs
+    path: ./rules/microsoft-cn.mrs
+    url: "https://github.com/DustinWin/ruleset_geodata/releases/download/mihomo-ruleset/microsoft-cn.mrs"
     interval: 86400
 
   Emby:
@@ -49,14 +67,30 @@ rule-providers:
     path: ./rules/mediaip.mrs
     url: "https://github.com/DustinWin/ruleset_geodata/releases/download/mihomo-ruleset/mediaip.mrs"
     interval: 86400
+  telegramip:
+    type: http
+    behavior: ipcidr
+    format: mrs
+    path: ./rules/telegramip.mrs
+    url: "https://github.com/DustinWin/ruleset_geodata/releases/download/mihomo-ruleset/telegramip.mrs"
+    interval: 86400
+  cnip:
+    type: http
+    behavior: ipcidr
+    format: mrs
+    path: ./rules/cnip.mrs
+    url: "https://github.com/DustinWin/ruleset_geodata/releases/download/mihomo-ruleset/cnip.mrs"
+    interval: 86400
 
 rules:
-  - GEOIP,cn,🎯 全球直连
-  - GEOSITE,microsoft-cn,🪟 微软服务
+
+  - RULE-SET,microsoft-cn,🪟 微软服务
   - RULE-SET,apple-cn,🍎 苹果服务
   - RULE-SET,Proxymedia,🌍 国外媒体
-  - GEOSITE,media,🌍 国外媒体
-  - RULE-SET,mediaip,🌍 国外媒体,no-resolve
-  - GEOIP,telegram,📲 电报消息,no-resolve
   - RULE-SET,telegramip,📲 电报消息,no-resolve
+  - RULE-SET,AI,🤖 人工智能
+  - RULE-SET,Emby,🌍 Emby
+  - GEOSITE,CN,🎯 全球直连
+  - GEOSITE,geolocation-!cn,🚀 节点选择
+  - RULE-SET,cnip,🎯 全球直连
   - MATCH,🐟 漏网之鱼
