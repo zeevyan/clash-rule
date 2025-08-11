@@ -8,7 +8,6 @@ proxy-groups:
   - {name: 🌍 Emby, type: select, proxies: [🎯 全球直连, {providers_tags}], include-all-providers: true}
   - {name: 🤖 人工智能, type: select, proxies: [🎯 全球直连, {providers_tags}], include-all-providers: true}
   - {name: 🐟 漏网之鱼, type: select, proxies: [🎯 全球直连, 🚀 节点选择]}
-  - {name: 🟢 全球绕过, type: select, proxies: [PASS], hidden: true}
   - {name: 🎯 全球直连, type: select, proxies: [DIRECT], hidden: true}
 
 rule-providers:
