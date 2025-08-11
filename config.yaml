@@ -1,27 +1,40 @@
+
 proxy-groups:
-  - {name: 🚀 节点选择, type: select, proxies: [{providers_tags}], include-all-providers: true}
-  - {name: 🪟 微软服务, type: select, proxies: [🎯 全球直连, 🚀 节点选择]}
-  - {name: 📲 电报消息, type: select, proxies: [🎯 全球直连, 🚀 节点选择]}
-  - {name: 🍎 苹果服务, type: select, proxies: [🎯 全球直连, 🚀 节点选择]}
-  - {name: 🌍 国外媒体, type: select, proxies: [🎯 全球直连, 🚀 节点选择]}
-  - {name: 🐟 漏网之鱼, type: select, proxies: [🚀 节点选择, {providers_tags}, 🎯 全球直连]}
-  - {name: 🟢 全球绕过, type: select, proxies: [PASS], hidden: true}
-  - {name: 🎯 全球直连, type: select, proxies: [DIRECT], hidden: true}
+  - {name:  节点选择, type: select, proxies: [{providers_tags}], include-all-providers: true}
+  - {name:  🪟 微软服务, type: select, proxies: [🎯 全球直连,  节点选择]}
+  - {name: 📲 电报消息, type: select, proxies: [🎯 全球直连,  节点选择]}
+  - {name:  苹果服务, type: select, proxies: [🎯 全球直连,  🚀 节点选择]}
+  - {name:  🌍 国外媒体, type: select, proxies: [🎯 全球直连,  🚀 节点选择]}
+  - {name:  🐟 漏网之鱼, type: select, proxies: [🚀 节点选择, {providers_tags},  全球直连]}
+  - {name:  🟢 全球绕过, type: select, proxies: [PASS], hidden: true}
+  - {name:  🎯 全球直连, type: select, proxies: [DIRECT], hidden: true}
+
 rule-providers:
- AI:
-    <<: *RuleProviders
+  AI:
+    type: http
+    behavior: classical
+    format: yaml
     path: './rules/AI.yaml'
     url: 'https://raw.githubusercontent.com/zeevyan/clash-rule/refs/heads/main/AI.yaml'
- Emby:
-    <<: *RuleProviders
+    interval: 86400
+
+  Emby:
+    type: http
+    behavior: classical
+    format: yaml
     path: './rules/Emby.yaml'
     url: 'https://raw.githubusercontent.com/zeevyan/clash-rule/refs/heads/main/Emby.yaml'
- Proxymedia:
-    <<: *RuleProviders
+    interval: 86400
+
+  Proxymedia:
+    type: http
+    behavior: classical
+    format: yaml
     path: './rules/Proxymedia.yaml'
-    url: 'https://raw.githubusercontent.com/zeevyan/clash-rule/refs/heads/main/Proxymedia.yaml'    
-        
- telegramip:
+    url: 'https://raw.githubusercontent.com/zeevyan/clash-rule/refs/heads/main/Proxymedia.yaml'
+    interval: 86400
+
+  telegramip:
     type: http
     behavior: ipcidr
     format: mrs
@@ -37,7 +50,6 @@ rule-providers:
     url: "https://github.com/DustinWin/ruleset_geodata/releases/download/mihomo-ruleset/mediaip.mrs"
     interval: 86400
 
-  
 rules:
   - GEOIP,cn,🎯 全球直连
   - GEOSITE,microsoft-cn,🪟 微软服务
