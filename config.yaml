@@ -6,6 +6,8 @@ proxy-groups:
   - {name: 🍎 苹果服务, type: select, proxies: [🎯 全球直连, {providers_tags}], include-all-providers: true}
   - {name: 🌍 国外媒体, type: select, proxies: [🎯 全球直连, {providers_tags}], include-all-providers: true}
   - {name: 🌍 Emby, type: select, proxies: [🎯 全球直连, {providers_tags}], include-all-providers: true}
+  - {name: 👑 微博, type: select, proxies: [🎯 全球直连, {providers_tags}], include-all-providers: true}
+  - {name: 🔒 IP, type: select, proxies: [🎯 全球直连, {providers_tags}], include-all-providers: true}
   - {name: 🤖 人工智能, type: select, proxies: [🎯 全球直连, {providers_tags}], include-all-providers: true}
   - {name: 🐟 漏网之鱼, type: select, proxies: [🎯 全球直连, 🚀 节点选择]}
   - {name: 🎯 全球直连, type: select, proxies: [DIRECT], hidden: true}
@@ -66,13 +68,7 @@ rule-providers:
     path: ./rules/mediaip.mrs
     url: "https://github.com/DustinWin/ruleset_geodata/releases/download/mihomo-ruleset/mediaip.mrs"
     interval: 86400
-  telegramip:
-    type: http
-    behavior: ipcidr
-    format: mrs
-    path: ./rules/telegramip.mrs
-    url: "https://github.com/DustinWin/ruleset_geodata/releases/download/mihomo-ruleset/telegramip.mrs"
-    interval: 86400
+
   cnip:
     type: http
     behavior: ipcidr
@@ -80,6 +76,28 @@ rule-providers:
     path: ./rules/cnip.mrs
     url: "https://github.com/DustinWin/ruleset_geodata/releases/download/mihomo-ruleset/cnip.mrs"
     interval: 86400
+  geosite-cn:
+    type: http
+    behavior: domain
+    format: mrs
+    path: ./rules/apple-cn.mrs
+    url: "https://github.com/DustinWin/ruleset_geodata/releases/download/mihomo-ruleset/geosite-cn.mrs"
+    interval: 86400
+  weibo:
+    type: http
+    behavior: classical
+    format: yaml
+    path: './rules/weibo.yaml'
+    url: 'https://raw.githubusercontent.com/zeevyan/clash-rule/refs/heads/main/weibo.yaml'
+    interval: 86400
+  ip:
+    type: http
+    behavior: classical
+    format: yaml
+    path: './rules/ip.yaml'
+    url: 'https://raw.githubusercontent.com/zeevyan/clash-rule/refs/heads/main/ip.yaml'
+    interval: 86400
+
 
 rules:
 
@@ -89,8 +107,11 @@ rules:
   - RULE-SET,Proxymedia,🌍 国外媒体
   - RULE-SET,telegramip,📲 电报消息,no-resolve
   - RULE-SET,AI,🤖 人工智能
+  - RULE-SET,weibo,👑 微博
+  - RULE-SET,ip,🔒 IP,no-resolve
   - RULE-SET,Emby,🌍 Emby
   - GEOSITE,CN,🎯 全球直连
   - GEOSITE,geolocation-!cn,🚀 节点选择
   - RULE-SET,cnip,🎯 全球直连,no-resolve
+  - RULE-SET,geosite-cn,🎯 全球直连
   - MATCH,🐟 漏网之鱼
