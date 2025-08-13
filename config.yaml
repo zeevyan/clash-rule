@@ -76,13 +76,7 @@ rule-providers:
     path: ./rules/cnip.mrs
     url: "https://github.com/DustinWin/ruleset_geodata/releases/download/mihomo-ruleset/cnip.mrs"
     interval: 86400
-  geosite-cn:
-    type: http
-    behavior: domain
-    format: mrs
-    path: ./rules/apple-cn.mrs
-    url: "https://github.com/DustinWin/ruleset_geodata/releases/download/mihomo-ruleset/geosite-cn.mrs"
-    interval: 86400
+
   weibo:
     type: http
     behavior: classical
@@ -110,6 +104,7 @@ rules:
   - RULE-SET,weibo,👑 微博
   - RULE-SET,ip,🔒 IP,no-resolve
   - RULE-SET,Emby,🌍 Emby
+  - GEOSITE,CN,🎯 全球直连
   - DOMAIN,ext1-hkg1.steamserver.net,🎯 全球直连
   - DOMAIN,ext2-hkg1.steamserver.net,🎯 全球直连
   - DOMAIN,ext3-hkg1.steamserver.net,🎯 全球直连
@@ -127,8 +122,6 @@ rules:
   - DOMAIN,ext4-sgp1.steamserver.net,🎯 全球直连
   - DOMAIN,ext1-lax1.steamserver.net,🎯 全球直连
   - DOMAIN,ext2-lax1.steamserver.net,🎯 全球直连
-  - GEOSITE,CN,🎯 全球直连
   - GEOSITE,geolocation-!cn,🚀 节点选择
-  - GEOIP,CN,🎯 全球直连
   - RULE-SET,cnip,🎯 全球直连,no-resolve
   - MATCH,🐟 漏网之鱼
