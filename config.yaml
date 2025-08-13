@@ -109,6 +109,6 @@ rules:
   - DOMAIN-SUFFIX,steamserver.net,🎯 全球直连
   - DOMAIN-SUFFIX,cm.steampowered.com,🎯 全球直连
   - GEOSITE,geolocation-!cn,🚀 节点选择
-  - GEOIP,CN,🎯 全球直连,no-resolve
+  - GEOIP,CN,🎯 全球直连
   - RULE-SET,cnip,🎯 全球直连,no-resolve
   - MATCH,🐟 漏网之鱼
