@@ -9,6 +9,7 @@ proxy-groups:
   - {name: 👑 微博, type: select, proxies: [🎯 全球直连, {providers_tags}], include-all-providers: true}
   - {name: 🔒 IP, type: select, proxies: [🎯 全球直连, {providers_tags}], include-all-providers: true}
   - {name: 🤖 人工智能, type: select, proxies: [🎯 全球直连, {providers_tags}], include-all-providers: true}
+  - {name: 🎥 XPTV, type: select, proxies: [🎯 全球直连, {providers_tags}], include-all-providers: true}
   - {name: 🐟 漏网之鱼, type: select, proxies: [🎯 全球直连, 🚀 节点选择]}
   - {name: 🎯 全球直连, type: select, proxies: [DIRECT], hidden: true}
 
@@ -91,6 +92,13 @@ rule-providers:
     path: './rules/ip.yaml'
     url: 'https://raw.githubusercontent.com/zeevyan/clash-rule/refs/heads/main/ip.yaml'
     interval: 86400
+  xptv:
+    type: http
+    behavior: classical
+    format: yaml
+    path: './rules/xptv.yaml'
+    url: 'https://raw.githubusercontent.com/fangkuia/XPTV/main/X/clash.yaml'
+    interval: 86400
 
 
 rules:
@@ -104,6 +112,7 @@ rules:
   - RULE-SET,weibo,👑 微博
   - RULE-SET,ip,🔒 IP,no-resolve
   - RULE-SET,Emby,🌍 Emby
+  - RULE-SET,xptv,🎥 XPTV
   - GEOSITE,CN,🎯 全球直连
   - GEOSITE,category-games@cn,🎯 全球直连
   - DOMAIN-SUFFIX,steamserver.net,🎯 全球直连
