@@ -74,7 +74,13 @@ payload:
 #播放
  - DOMAIN,wjm.kemfsj.com
 #4k-av播放
- - DOMAIN,www.4k-av.com
+ - DOMAIN,ysttv.com
+ - DOMAIN,7dgirl.org
+ - DOMAIN,ysttv.com
+ - DOMAIN,4kfps.com
+ - DOMAIN,laodifang.tv
+ - DOMAIN,xiaohys.com
+ - DOMAIN,vip.dytt-cinema.com
 #囧动漫主页
  - IP-CIDR,43.142.232.217/32,,no-resolve
 #播放
@@ -155,7 +161,7 @@ payload:
  - IP-CIDR,163.123.192.17/32,,no-resolve
  - DOMAIN,c.xpgtv.net
 #厂长主页
- - DOMAIN,www.czzyvideo.com
+ - DOMAIN,www.czzymovie.com
 #播放
  - DOMAIN,qimgs.qunarzz.com
  - DOMAIN,lf16-fe.resso.me
