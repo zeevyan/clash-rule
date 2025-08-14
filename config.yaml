@@ -97,7 +97,7 @@ rule-providers:
     behavior: classical
     format: yaml
     path: './rules/xptv.yaml'
-    url: 'https://raw.githubusercontent.com/fangkuia/XPTV/main/X/clash.yaml'
+    url: 'https://raw.githubusercontent.com/zeevyan/clash-rule/refs/heads/main/xptv.yaml'
     interval: 86400
 
 
@@ -105,18 +105,18 @@ rules:
 
   - RULE-SET,microsoft-cn,🪟 微软服务
   - RULE-SET,apple-cn,🍎 苹果服务
-  - RULE-SET,mediaip,🌍 国外媒体,no-resolve
   - RULE-SET,Proxymedia,🌍 国外媒体
-  - RULE-SET,telegramip,📲 电报消息,no-resolve
   - RULE-SET,AI,🤖 人工智能
   - RULE-SET,weibo,👑 微博
   - RULE-SET,ip,🔒 IP,no-resolve
   - RULE-SET,Emby,🌍 Emby
   - RULE-SET,xptv,🎥 XPTV
-  - GEOSITE,CN,🎯 全球直连
+  - RULE-SET,telegramip,📲 电报消息,no-resolve
+  - RULE-SET,mediaip,🌍 国外媒体,no-resolve
   - GEOSITE,category-games@cn,🎯 全球直连
   - DOMAIN-SUFFIX,steamserver.net,🎯 全球直连
   - DOMAIN-SUFFIX,cm.steampowered.com,🎯 全球直连
+  - GEOSITE,CN,🎯 全球直连
   - GEOSITE,geolocation-!cn,🚀 节点选择
   - GEOIP,CN,🎯 全球直连
   - RULE-SET,cnip,🎯 全球直连,no-resolve
