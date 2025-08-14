@@ -74,13 +74,14 @@ payload:
 #播放
  - DOMAIN,wjm.kemfsj.com
 #4k-av播放
- - DOMAIN,ysttv.com
- - DOMAIN,7dgirl.org
- - DOMAIN,ysttv.com
- - DOMAIN,4kfps.com
- - DOMAIN,laodifang.tv
- - DOMAIN,xiaohys.com
- - DOMAIN,vip.dytt-cinema.com
+ - DOMAIN-SUFFIX,ysttv.com
+ - DOMAIN-SUFFIX,7dgirl.org
+ - DOMAIN-SUFFIX,ysttv.com
+ - DOMAIN-SUFFIX,4kfps.com
+ - DOMAIN-SUFFIX,laodifang.tv
+ - DOMAIN-SUFFIX,xiaohys.com
+ - DOMAIN-SUFFIX,vip.dytt-cinema.com
+ - DOMAIN-SUFFIX,4k-av.com
 #囧动漫主页
  - IP-CIDR,43.142.232.217/32,,no-resolve
 #播放
