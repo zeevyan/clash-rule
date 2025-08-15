@@ -1,7 +1,6 @@
 
 proxy-groups:
   - {name: 🚀 节点选择, type: select, proxies: [{providers_tags}], include-all-providers: true, direct}
-  - {name: 🪟 微软服务, type: select, proxies: [🎯 全球直连, {providers_tags}], include-all-providers: true}
   - {name: 📲 电报消息, type: select, proxies: [🎯 全球直连, {providers_tags}], include-all-providers: true}
   - {name: 🍎 苹果服务, type: select, proxies: [🎯 全球直连, {providers_tags}], include-all-providers: true}
   - {name: 🌍 国外媒体, type: select, proxies: [🎯 全球直连, {providers_tags}], include-all-providers: true}
@@ -30,13 +29,6 @@ rule-providers:
     url: "https://github.com/DustinWin/ruleset_geodata/releases/download/mihomo-ruleset/apple-cn.mrs"
     interval: 86400
 
-  microsoft-cn:
-    type: http
-    behavior: domain
-    format: mrs
-    path: ./rules/microsoft-cn.mrs
-    url: "https://github.com/DustinWin/ruleset_geodata/releases/download/mihomo-ruleset/microsoft-cn.mrs"
-    interval: 86400
 
   Emby:
     type: http
@@ -56,19 +48,12 @@ rule-providers:
 
   telegramip:
     type: http
-    behavior: ipcidr
-    format: mrs
-    path: ./rules/telegramip.mrs
-    url: "https://github.com/DustinWin/ruleset_geodata/releases/download/mihomo-ruleset/telegramip.mrs"
+    behavior: classical
+    format: yaml
+    path: ./rules/telegramip.yaml
+    url: "https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/refs/heads/master/rule/Clash/Telegram/Telegram_No_Resolve.yaml"
     interval: 86400
 
-  mediaip:
-    type: http
-    behavior: ipcidr
-    format: mrs
-    path: ./rules/mediaip.mrs
-    url: "https://github.com/DustinWin/ruleset_geodata/releases/download/mihomo-ruleset/mediaip.mrs"
-    interval: 86400
 
   cnip:
     type: http
@@ -103,7 +88,6 @@ rule-providers:
 
 rules:
 
-  - RULE-SET,microsoft-cn,🪟 微软服务
   - RULE-SET,apple-cn,🍎 苹果服务
   - RULE-SET,Proxymedia,🌍 国外媒体
   - RULE-SET,AI,🤖 人工智能
@@ -111,8 +95,7 @@ rules:
   - RULE-SET,ip,🔒 IP,no-resolve
   - RULE-SET,Emby,🌍 Emby
   - RULE-SET,xptv,🎥 XPTV
-  - RULE-SET,telegramip,📲 电报消息,no-resolve
-  - RULE-SET,mediaip,🌍 国外媒体,no-resolve
+  - RULE-SET,telegramip,📲 电报消息
   - GEOSITE,category-games@cn,🎯 全球直连
   - DOMAIN-SUFFIX,steamserver.net,🎯 全球直连
   - DOMAIN-SUFFIX,cm.steampowered.com,🎯 全球直连
