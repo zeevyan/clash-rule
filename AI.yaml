@@ -1,4 +1,5 @@
 payload:
+
  - DOMAIN,ai.google.dev
  - DOMAIN,alkalimakersuite-pa.clients6.google.com
  - DOMAIN,makersuite.google.com
@@ -9,6 +10,9 @@ payload:
  - DOMAIN-SUFFIX,generativeai.google
  - DOMAIN-SUFFIX,proactivebackend-pa.googleapis.com
  - DOMAIN-SUFFIX,apis.google.com
+ - DOMAIN-KEYWORD,colab
+ - DOMAIN-KEYWORD,developerprofiles
+ - DOMAIN-KEYWORD,generativelanguage
  - DOMAIN-KEYWORD,colab
  - DOMAIN-KEYWORD,developerprofiles
  - DOMAIN-KEYWORD,generativelanguage
