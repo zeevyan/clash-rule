@@ -4,6 +4,7 @@ proxy-groups:
   - {name: 📲 电报消息, type: select, proxies: [🎯 全球直连, {providers_tags}], include-all-providers: true}
   - {name: 🍎 苹果服务, type: select, proxies: [🎯 全球直连, {providers_tags}], include-all-providers: true}
   - {name: 📺 Netflix, type: select, proxies: [🎯 全球直连, {providers_tags}], include-all-providers: true}
+  - {name: 📺 Tiktok, type: select, proxies: [🎯 全球直连, {providers_tags}], include-all-providers: true}
   - {name: 🌍 国外媒体, type: select, proxies: [🎯 全球直连, {providers_tags}], include-all-providers: true}
   - {name: 🌍 Emby, type: select, proxies: [🎯 全球直连, {providers_tags}], include-all-providers: true}
   - {name: 👑 微博, type: select, proxies: [🎯 全球直连, {providers_tags}], include-all-providers: true}
@@ -51,6 +52,13 @@ rule-providers:
     format: yaml
     path: './rules/Emby.yaml'
     url: 'https://raw.githubusercontent.com/zeevyan/clash-rule/refs/heads/main/Emby.yaml'
+    interval: 86400
+  Tiktok:
+    type: http
+    behavior: classical
+    format: yaml
+    path: './rules/Tiktok.yaml'
+    url: 'https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/refs/heads/master/rule/Clash/TikTok/TikTok_No_Resolve.yaml'
     interval: 86400
 
   Proxymedia:
@@ -106,6 +114,7 @@ rules:
   - RULE-SET,apple-cn,🍎 苹果服务
   - RULE-SET,Netflix,📺 Netflix
   - RULE-SET,HBO,📺 Netflix
+  - RULE-SET,Tiktok,📺 Tiktok
   - RULE-SET,Proxymedia,🌍 国外媒体
   - RULE-SET,AI,🤖 人工智能
   - RULE-SET,weibo,👑 微博
