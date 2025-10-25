@@ -122,6 +122,7 @@ rules:
   - RULE-SET,Emby,🌍 Emby
   - RULE-SET,xptv,🎥 XPTV
   - RULE-SET,telegramip,📲 电报消息
+  - DOMAIN-SUFFIX,steamserver.net,🎯 全球直连
   - GEOSITE,category-games@cn,🎯 全球直连
   - GEOSITE,CN,🎯 全球直连
   - GEOSITE,geolocation-!cn,🚀 节点选择
