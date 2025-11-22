@@ -7,6 +7,9 @@ payload:
  - DOMAIN,gateway.icloud.com
  - DOMAIN,metrics.icloud.com
 #XPTV封面来源
+- DOMAIN-SUFFIX,vip.dytt-cine.com
+- DOMAIN-SUFFIX,a4kmp.com
+- DOMAIN-SUFFIX,fmovies.llc
 #小海报
  - DOMAIN-SUFFIX,doubanio.com
 #大封面
