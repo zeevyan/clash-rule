@@ -4,6 +4,8 @@ payload:
  - DOMAIN-SUFFIX,lovense-api.com
  - DOMAIN-SUFFIX,lovense.com
  - IP-CIDR,104.19.128.100/32,no-resolve
+# vod
+ - DOMAIN-SUFFIX,haigui.tv
 
 # 好又清影视网
  - DOMAIN-SUFFIX,cdn.iz8qkg.com
