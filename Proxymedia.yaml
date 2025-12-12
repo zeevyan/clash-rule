@@ -6,8 +6,8 @@ payload:
  - IP-CIDR,104.19.128.100/32,no-resolve
 # vod
  - DOMAIN-SUFFIX,haigui.tv
- - DOMAIN-SUFFIX,3img.hitv.com:443
-
+ - DOMAIN-SUFFIX,3img.hitv.com
+ - DOMAIN-SUFFIX,c1.rrcdnbf6.com
 # 好又清影视网
  - DOMAIN-SUFFIX,cdn.iz8qkg.com
  - DOMAIN-SUFFIX,cdnb.iz8qkg.com
