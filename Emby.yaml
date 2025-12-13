@@ -8,4 +8,6 @@ payload:
  - DOMAIN-SUFFIX,cf.zox.show
  - DOMAIN-SUFFIX,direct.zox.show
  - DOMAIN-SUFFIX,public.shrekmedia.org
+ - DOMAIN-SUFFIX,v1.uhdnow.com
+ - DOMAIN-SUFFIX,global.uhdnow.com
  - USER-AGENT,VidHub*
