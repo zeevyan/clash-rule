@@ -24,10 +24,7 @@ jobs:
             echo "---------------------------------------"
             echo "Processing: $file"
             
-            # 核心改动：使用 sh -c 确保命令执行完后容器立即销毁
-            # 使用 metacubex/mihomo 这个 100% 存在的镜像
-            docker run --rm -v $(pwd):/work -w /work metacubex/mihomo:latest \
-            sh -c "./mihomo rule-set compile $file ${filename}.mrs"
+            docker run --rm -v $(pwd):/work -w /work --entrypoint /mihomo metacubex/mihomo:latest rule-set compile "$file" "${filename}.mrs"
             
             if [ -f "${filename}.mrs" ]; then
               echo "Success: ${filename}.mrs created."
