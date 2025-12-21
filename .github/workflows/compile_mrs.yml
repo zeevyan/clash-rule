@@ -1,7 +1,8 @@
 name: Compile Clash MRS
 on:
   push:
-    branches: [ main ]
+    branches:
+      - main
     paths:
       - '**.yaml'
   workflow_dispatch:
@@ -17,27 +18,23 @@ jobs:
 
       - name: Compile Rule Sets
         run: |
-          # 1. 下载并准备二进制文件
           echo "Downloading Mihomo..."
           URL='https://github.com/MetaCubeX/mihomo/releases/download/v1.18.8/mihomo-linux-amd64-v1.18.8.gz'
           curl -L -o mihomo.gz "$URL"
           gunzip mihomo.gz
           chmod +x mihomo
 
-          # 2. 遍历当前目录下的所有 YAML 文件
           shopt -s nullglob
           for file in *.yaml; do
             filename="${file%.*}"
             echo "---------------------------------------"
             echo "Processing: $file"
             
-            # 3. 在后台启动编译逻辑
-            # 我们将输出重定向到 /dev/null 防止干扰日志
+            # 后台运行编译
             ./mihomo rule-set compile "$file" "${filename}.mrs" > /dev/null 2>&1 &
             MIHOMO_PID=$!
             
-            # 4. 轮询检查文件生成状态
-            # 每 0.5 秒检查一次，最多等待 15 秒
+            # 轮询检查文件
             SUCCESS=false
             for i in {1..30}; do
               if [ -f "${filename}.mrs" ] && [ -s "${filename}.mrs" ]; then
@@ -48,11 +45,11 @@ jobs:
               sleep 0.5
             done
             
-            # 5. 任务完成，强制结束进程以释放 Actions
+            # 强杀后台进程
             kill $MIHOMO_PID 2>/dev/null || true
             
             if [ "$SUCCESS" = false ]; then
-              echo "❌ Error: Failed to compile $file. Check your YAML format."
+              echo "❌ Error: Failed to compile $file"
               exit 1
             fi
           done
