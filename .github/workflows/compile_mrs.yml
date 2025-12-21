@@ -20,11 +20,11 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          # 使用 gh 下载，移除不支持的 --limit 参数
-          gh release download --repo MetaCubeX/rule-set-converter --pattern "*linux-amd64.tar.gz" --clobber
+          # 下载资产，支持预发布版
+          gh release download --repo MetaCubeX/rule-set-converter --pattern "*linux-amd64.tar.gz" --clobber --include-pre-releases
           
           tar -xzf *.tar.gz
-          # 寻找解压后的二进制文件并重命名为 converter
+          # 寻找二进制文件并重命名为 converter
           find . -maxdepth 1 -name "rule-set-converter*" -not -name "*.tar.gz" -exec mv {} ./converter \;
           chmod +x converter
 
@@ -35,7 +35,6 @@ jobs:
               filename="${file%.*}"
               echo "---------------------------------------"
               echo "Compiling: $file"
-              # 使用转换工具生成 mrs
               ./converter -type domain -format mrs -input "$file" -output "${filename}.mrs"
               
               if [ -f "${filename}.mrs" ]; then
