@@ -14,50 +14,51 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      - name: Install Mihomo (Clash Meta)
+      - name: Install Rule-Set-Converter
         run: |
-          # 自动获取最新的 linux-amd64 非兼容版
-          URL=$(curl -s https://api.github.com/repos/MetaCubeX/mihomo/releases/latest | jq -r '.assets[] | select(.name | contains("linux-amd64")) | select(.name | contains("compatible") | not) | select(.name | endswith(".gz")) | .browser_download_url' | head -n 1)
+          # 获取最新的 rule-set-converter 专用转换工具
+          URL=$(curl -s https://api.github.com/repos/MetaCubeX/rule-set-converter/releases/latest | jq -r '.assets[] | select(.name | contains("linux-amd64")) | .browser_download_url' | head -n 1)
           echo "Downloading from: $URL"
           
-          # 下载并解压
-          curl -Lo mihomo.gz "$URL"
-          gunzip -c mihomo.gz > mihomo
-          chmod +x mihomo
-- name: Compile YAML to MRS
+          curl -Lo converter.tar.gz "$URL"
+          tar -xzf converter.tar.gz
+          # 确保可执行文件名为 converter
+          mv rule-set-converter* converter || true
+          chmod +x converter
+
+      - name: Compile YAML to MRS
         run: |
+          # 遍历所有 yaml 文件进行编译
           for file in *.yaml; do
             if [ -f "$file" ]; then
               filename="${file%.*}"
               echo "---------------------------------------"
-              echo "Processing: $file"
+              echo "Compiling: $file -> ${filename}.mrs"
               
-              # 使用 timeout 确保命令在 5 秒后强制停止，防止卡死
-              # -d . 强制指定当前目录为运行目录，避免去创建系统配置文件
-              timeout 5s ./mihomo rule-set compile "$file" "${filename}.mrs" || true
+              # rule-set-converter 的标准用法
+              # -type 为规则类型，-format 为输出格式
+              ./converter -type domain -format mrs -input "$file" -output "${filename}.mrs"
               
-              # 检查 .mrs 文件是否成功生成
               if [ -f "${filename}.mrs" ]; then
                 echo "Success: ${filename}.mrs created."
               else
-                echo "Error: Failed to compile $file. Please check if the YAML format is correct."
+                echo "Error: Failed to compile $file"
                 exit 1
               fi
             fi
           done
-      
 
       - name: Push Changes
         run: |
           git config --local user.email "github-actions[bot]@users.noreply.github.com"
           git config --local user.name "github-actions[bot]"
           
-          # 只添加生成的 mrs 文件
+          # 添加所有生成的 mrs 文件
           git add *.mrs
           
           if git diff --staged --quiet; then
             echo "No changes to commit"
           else
-            git commit -m "Auto-compile Clash YAML to MRS"
+            git commit -m "Auto-compile Clash YAML to MRS using converter"
             git push
           fi
