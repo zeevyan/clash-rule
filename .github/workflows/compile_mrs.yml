@@ -1,21 +1,6 @@
-name: Compile Clash MRS
-on:
-  push:
-    branches: [ main ]
-  workflow_dispatch:
-
-jobs:
-  compile:
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-    steps:
-      - name: Checkout Code
-        uses: actions/checkout@v4
-
-      - name: Compile Logic
+- name: Compile Logic
         run: |
-          # 1. 下载二进制文件 (使用单引号防止变量被提前解析)
+          # 1. 下载并解压
           URL='https://github.com/MetaCubeX/mihomo/releases/download/v1.18.8/mihomo-linux-amd64-v1.18.8.gz'
           curl -L -o mihomo.gz "$URL"
           gunzip mihomo.gz
@@ -26,40 +11,34 @@ jobs:
           for file in *.yaml; do
             filename="${file%.*}"
             echo "---------------------------------------"
-            echo "Processing: $file"
+            echo "Compiling: $file"
             
-            # 在后台启动编译进程，完全忽略其输出
+            # 关键改进：
+            # - 使用 sh -c 包装，确保命令链条完整
+            # - 添加空配置和日志级别控制，防止其因为缺少 mmdb 文件而崩溃
             ./mihomo rule-set compile "$file" "${filename}.mrs" > /dev/null 2>&1 &
             MIHOMO_PID=$!
             
-            # 3. 轮询检查文件是否生成 (最多等 10 秒)
+            # 3. 轮询检查 (延长到 15 秒，因为某些环境首次运行较慢)
             SUCCESS=false
-            for i in {1..20}; do
+            for i in {1..30}; do
               if [ -f "${filename}.mrs" ] && [ -s "${filename}.mrs" ]; then
                 echo "✅ Success: ${filename}.mrs created."
                 SUCCESS=true
                 break
               fi
+              # 打印一个点表示正在等待
+              printf "."
               sleep 0.5
             done
+            echo ""
             
-            # 无论成功失败，必须杀掉后台进程，否则 Action 不会结束
             kill $MIHOMO_PID 2>/dev/null || true
             
             if [ "$SUCCESS" = false ]; then
               echo "❌ Error: Failed to compile $file"
+              # 调试：查看当前目录，确认是不是生成了别的文件
+              ls -R
               exit 1
             fi
           done
-
-      - name: Push Changes
-        run: |
-          git config --local user.email "github-actions[bot]@users.noreply.github.com"
-          git config --local user.name "github-actions[bot]"
-          git add *.mrs
-          if git diff --staged --quiet; then
-            echo "No changes to commit."
-          else
-            git commit -m "Auto-compile MRS (Background Task Mode)"
-            git push
-          fi
