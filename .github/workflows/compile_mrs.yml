@@ -1,0 +1,42 @@
+name: Compile Clash MRS
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - '**.yaml'
+  workflow_dispatch:
+
+jobs:
+  compile:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Mihomo (Clash Meta)
+        run: |
+          # 获取最新 Mihomo 核心
+          URL=$(curl -s https://api.github.com/repos/MetaCubeX/mihomo/releases/latest | jq -r '.assets[] | select(.name | contains("linux-amd64")) | select(.name | contains("compatible") | not) | .browser_download_url')
+          curl -Lo mihomo.gz "$URL"
+          gunzip -c mihomo.gz > mihomo
+          chmod +x mihomo
+
+      - name: Compile YAML to MRS
+        run: |
+          for file in *.yaml; do
+            if [ -f "$file" ]; then
+              filename="${file%.*}"
+              echo "Compiling $file to ${filename}.mrs..."
+              # 使用 mihomo 转换工具命令 (注意：取决于具体核心版本的子命令)
+              ./mihomo rule-set compile "$file" "${filename}.mrs"
+            fi
+          done
+
+      - name: Push Changes
+        run: |
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+          git add *.mrs
+          git commit -m "Auto-compile Clash YAML to MRS" || echo "No changes to commit"
+          git push
