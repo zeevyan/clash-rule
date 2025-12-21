@@ -17,16 +17,24 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Install Rule-Set-Converter
-        env:
-          GH_TOKEN: ${{ github.token }}
         run: |
-          # 下载资产，支持预发布版
-          gh release download --repo MetaCubeX/rule-set-converter --pattern "*linux-amd64.tar.gz" --clobber --include-pre-releases
+          # 1. 直接下载特定的稳定版本链接，避免 API 报错和版本冲突
+          # 我们选择一个确定的版本，或者使用通用的 latest 自动重定向
+          VERSION="v1.1.0"
+          URL="https://github.com/MetaCubeX/rule-set-converter/releases/download/${VERSION}/rule-set-converter-linux-amd64.tar.gz"
           
-          tar -xzf *.tar.gz
-          # 寻找二进制文件并重命名为 converter
-          find . -maxdepth 1 -name "rule-set-converter*" -not -name "*.tar.gz" -exec mv {} ./converter \;
+          echo "Downloading from: $URL"
+          curl -Lo converter.tar.gz "$URL"
+          
+          # 2. 解压
+          tar -xzf converter.tar.gz
+          
+          # 3. 寻找二进制文件并重命名
+          # 查找当前目录下所有以 rule-set-converter 开头的文件并重命名为 converter
+          mv rule-set-converter-linux-amd64 converter || mv rule-set-converter converter || true
+          
           chmod +x converter
+          echo "Converter installed successfully."
 
       - name: Compile YAML to MRS
         run: |
@@ -35,6 +43,8 @@ jobs:
               filename="${file%.*}"
               echo "---------------------------------------"
               echo "Compiling: $file"
+              
+              # 执行转换：输入是 YAML，输出是 MRS
               ./converter -type domain -format mrs -input "$file" -output "${filename}.mrs"
               
               if [ -f "${filename}.mrs" ]; then
