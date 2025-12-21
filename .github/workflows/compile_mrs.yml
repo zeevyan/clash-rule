@@ -16,44 +16,26 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      - name: Install Rule-Set-Converter
+      - name: Compile YAML to MRS via Docker
         run: |
-          # 1. 绕过 API，直接使用 GitHub 最新的下载规律
-          # 这个链接会自动重定向到最新的稳定版
-          REPO="MetaCubeX/rule-set-converter"
-          
-          # 获取最新 tag 名（使用最稳健的 ls-remote 方式，不需要 API 权限）
-          TAG=$(git ls-remote --tags --refs --sort='v:refname' https://github.com/$REPO.git | tail -n1 | sed 's/.*\///')
-          echo "Latest Tag Found: $TAG"
-          
-          # 2. 拼接 URL 并尝试下载（处理可能存在的 v 前缀差异）
-          URL="https://github.com/$REPO/releases/download/${TAG}/rule-set-converter-linux-amd64.tar.gz"
-          echo "Attempting download: $URL"
-          
-          curl -L -o converter.tar.gz "$URL"
-          
-          # 3. 容错逻辑：如果上述下载不到，尝试带 tag 的文件名格式
-          if [ $(stat -c%s "converter.tar.gz") -lt 10000 ]; then
-             echo "Standard URL failed, trying tag-specific URL..."
-             URL="https://github.com/$REPO/releases/download/${TAG}/rule-set-converter-${TAG}-linux-amd64.tar.gz"
-             curl -L -o converter.tar.gz "$URL"
-          fi
-
-          # 4. 解压并重命名可执行文件
-          tar -xzf converter.tar.gz
-          find . -maxdepth 1 -type f -executable -not -name "*.tar.gz" -exec mv {} ./converter \;
-          chmod +x converter
-          ./converter -h # 验证是否安装成功
-
-      - name: Compile YAML to MRS
-        run: |
+          # 遍历所有 YAML 文件
           shopt -s nullglob
           for file in *.yaml; do
             filename="${file%.*}"
             echo "---------------------------------------"
-            echo "Compiling: $file"
-            # 这里的 -type 设置为 domain，因为绝大部分 Clash 规则都是域名类
-            ./converter -type domain -format mrs -input "$file" -output "${filename}.mrs"
+            echo "Processing: $file"
+            
+            # 使用 Mihomo 官方 Docker 镜像执行一次性编译命令
+            # -v 指定当前目录映射到容器内
+            docker run --rm -v $(pwd):/work -w /work metacubex/mihomo:latest \
+            mihomo rule-set compile "$file" "${filename}.mrs"
+            
+            if [ -f "${filename}.mrs" ]; then
+              echo "Success: ${filename}.mrs created."
+            else
+              echo "Error: Failed to compile $file"
+              exit 1
+            fi
           done
 
       - name: Push Changes
@@ -64,6 +46,6 @@ jobs:
           if git diff --staged --quiet; then
             echo "No changes to commit"
           else
-            git commit -m "Auto-compile Clash YAML to MRS"
+            git commit -m "Auto-compile Clash YAML to MRS via Docker"
             git push
           fi
