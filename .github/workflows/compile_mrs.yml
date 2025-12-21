@@ -18,45 +18,38 @@ jobs:
 
       - name: Install Rule-Set-Converter
         run: |
-          # 1. 使用 API 找到最新的稳定版 tag，并下载固定的资产名称
-          TAG=$(curl -s https://api.github.com/repos/MetaCubeX/rule-set-converter/releases/latest | jq -r .tag_name)
-          URL="https://github.com/MetaCubeX/rule-set-converter/releases/download/${TAG}/rule-set-converter-linux-amd64.tar.gz"
-          echo "Fetching Version: $TAG"
-          echo "Downloading from: $URL"
+          # 1. 自动定位最新的 linux-amd64 资产下载链接（不依赖拼接 URL）
+          ASSET_URL=$(curl -s https://api.github.com/repos/MetaCubeX/rule-set-converter/releases/latest | jq -r '.assets[] | select(.name | contains("linux-amd64")) | select(.name | endswith(".tar.gz")) | .browser_download_url' | head -n 1)
           
-          # 2. 下载并检查文件大小（防止下载到 404 页面）
-          curl -L -o converter.tar.gz "$URL"
-          if [ $(stat -c%s "converter.tar.gz") -lt 1000 ]; then
-            echo "Download failed or file too small. Trying alternative naming..."
-            URL="https://github.com/MetaCubeX/rule-set-converter/releases/download/${TAG}/rule-set-converter-${TAG}-linux-amd64.tar.gz"
-            curl -L -o converter.tar.gz "$URL"
+          echo "Found Asset URL: $ASSET_URL"
+          
+          # 2. 使用 -L 追踪重定向，下载真正的压缩包
+          curl -L -o converter.tar.gz "$ASSET_URL"
+          
+          # 3. 验证是否下载成功 (文件需大于 1MB)
+          if [ $(stat -c%s "converter.tar.gz") -lt 1000000 ]; then
+            echo "Error: Downloaded file is too small, likely not a binary."
+            exit 1
           fi
           
-          # 3. 解压并重命名
+          # 4. 解压并寻找二进制文件
           tar -xzf converter.tar.gz
-          find . -name "rule-set-converter*" -type f -not -name "*.tar.gz" -exec mv {} ./converter \;
+          # 搜索解压出的可执行文件并重命名为 converter
+          find . -maxdepth 1 -type f -name "rule-set-converter*" -not -name "*.tar.gz" -exec mv {} ./converter \;
           chmod +x converter
 
       - name: Compile YAML to MRS
         run: |
-          # 检查是否存在 yaml 文件
-          ls *.yaml > /dev/null 2>&1 || (echo "No yaml files found"; exit 0)
-          
+          # 只有存在 yaml 时才编译
+          shopt -s nullglob
           for file in *.yaml; do
-            if [ -f "$file" ]; then
-              filename="${file%.*}"
-              echo "---------------------------------------"
-              echo "Compiling: $file"
-              
-              # 执行转换
-              ./converter -type domain -format mrs -input "$file" -output "${filename}.mrs"
-              
-              if [ -f "${filename}.mrs" ]; then
-                echo "Success: ${filename}.mrs created."
-              else
-                echo "Error: Failed to compile $file"
-                exit 1
-              fi
+            filename="${file%.*}"
+            echo "---------------------------------------"
+            echo "Compiling: $file"
+            ./converter -type domain -format mrs -input "$file" -output "${filename}.mrs"
+            
+            if [ -f "${filename}.mrs" ]; then
+              echo "Success: ${filename}.mrs created."
             fi
           done
 
