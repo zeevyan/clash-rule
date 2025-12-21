@@ -1,8 +1,7 @@
 name: Compile Clash MRS
 on:
   push:
-    branches:
-      - main
+    branches: [ main ]
     paths:
       - '**.yaml'
   workflow_dispatch:
@@ -16,25 +15,28 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      - name: Compile Rule Sets
+      - name: Compile With Debug Log
         run: |
+          # 1. 下载并准备二进制文件
           echo "Downloading Mihomo..."
           URL='https://github.com/MetaCubeX/mihomo/releases/download/v1.18.8/mihomo-linux-amd64-v1.18.8.gz'
           curl -L -o mihomo.gz "$URL"
           gunzip mihomo.gz
           chmod +x mihomo
 
+          # 2. 遍历 YAML 文件
           shopt -s nullglob
           for file in *.yaml; do
             filename="${file%.*}"
             echo "---------------------------------------"
             echo "Processing: $file"
             
-            # 后台运行编译
-            ./mihomo rule-set compile "$file" "${filename}.mrs" > /dev/null 2>&1 &
+            # 3. 启动编译并将日志保存到 compile_debug.log
+            # 注意：此处必须重定向，否则后台进程会污染标准输出
+            ./mihomo rule-set compile "$file" "${filename}.mrs" > compile_debug.log 2>&1 &
             MIHOMO_PID=$!
             
-            # 轮询检查文件
+            # 4. 轮询检查文件生成
             SUCCESS=false
             for i in {1..30}; do
               if [ -f "${filename}.mrs" ] && [ -s "${filename}.mrs" ]; then
@@ -45,13 +47,18 @@ jobs:
               sleep 0.5
             done
             
-            # 强杀后台进程
-            kill $MIHOMO_PID 2>/dev/null || true
-            
+            # 5. 如果失败，打印具体的错误原因
             if [ "$SUCCESS" = false ]; then
               echo "❌ Error: Failed to compile $file"
+              echo "===== DEBUG LOG FROM MIHOMO ====="
+              cat compile_debug.log
+              echo "=================================="
+              kill $MIHOMO_PID 2>/dev/null || true
               exit 1
             fi
+            
+            # 任务完成，清理进程
+            kill $MIHOMO_PID 2>/dev/null || true
           done
 
       - name: Push Changes
@@ -62,6 +69,6 @@ jobs:
           if git diff --staged --quiet; then
             echo "No changes to commit."
           else
-            git commit -m "Auto-compile MRS rules"
+            git commit -m "Auto-compile MRS rules (Debug Mode)"
             git push
           fi
