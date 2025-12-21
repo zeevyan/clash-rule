@@ -26,12 +26,15 @@ jobs:
           for file in *.yaml; do
             filename="${file%.*}"
             echo "Processing $file..."
+            # 强行给它 5 秒编译时间，然后强制杀掉，无视其退出码
             timeout 5s ./mihomo rule-set compile "$file" "${filename}.mrs" || true
-            if [ -f "${filename}.mrs" ]; then
-              echo "Success: ${filename}.mrs created."
-            else
+            
+            # 只有文件没生成才报错
+            if [ ! -f "${filename}.mrs" ]; then
+              echo "Failed to create ${filename}.mrs"
               exit 1
             fi
+            echo "File created successfully."
           done
 
       - name: Push Changes
@@ -39,4 +42,10 @@ jobs:
           git config --local user.email "github-actions[bot]@users.noreply.github.com"
           git config --local user.name "github-actions[bot]"
           git add *.mrs
-          git diff --staged --quiet || (git commit -m "Auto-compile MRS" && git push)
+          # 检查是否有改动，防止 commit 失败
+          if git diff --staged --quiet; then
+            echo "No changes to commit."
+          else
+            git commit -m "Auto-compile MRS"
+            git push
+          fi
