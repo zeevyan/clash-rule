@@ -13,13 +13,15 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      - name: Download Mihomo Binary
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: '>=1.21'
+
+      - name: Install Converter
         run: |
-          # 下载特定版本的二进制文件
-          URL="https://github.com/MetaCubeX/mihomo/releases/download/v1.18.8/mihomo-linux-amd64-v1.18.8.gz"
-          curl -L -o mihomo.gz "$URL"
-          gunzip mihomo.gz
-          chmod +x mihomo
+          # 直接安装转换器工具，不含 Mihomo 代理内核
+          go install github.com/MetaCubeX/rule-set-converter@latest
 
       - name: Compile YAML to MRS
         run: |
@@ -29,9 +31,9 @@ jobs:
             echo "---------------------------------------"
             echo "Compiling: $file"
             
-            # 这里的 -c /dev/null 是制胜关键
-            # 它防止 mihomo 启动任何后台服务或监听 7890 端口
-            ./mihomo rule-set compile "$file" "${filename}.mrs" -c /dev/null
+            # 使用刚刚安装的转换器
+            # 该工具路径通常在 ~/go/bin/rule-set-converter
+            ~/go/bin/rule-set-converter -type domain -format mrs -input "$file" -output "${filename}.mrs"
             
             if [ -f "${filename}.mrs" ]; then
               echo "✅ Success: ${filename}.mrs created."
@@ -47,8 +49,8 @@ jobs:
           git config --local user.name "github-actions[bot]"
           git add *.mrs
           if git diff --staged --quiet; then
-            echo "No changes to commit."
+            echo "No changes"
           else
-            git commit -m "Auto-compile MRS (Safe Mode)"
+            git commit -m "Auto-compile MRS (Go Converter)"
             git push
           fi
