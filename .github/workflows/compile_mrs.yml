@@ -13,61 +13,43 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: '3.x'
-
-      - name: Install PyYAML
-        run: pip install PyYAML
-
-      - name: Compile YAML to MRS (Native Python)
+      - name: Compile Logic
         run: |
-          python - <<EOF
-          import yaml
-          import struct
-          import os
+          # 1. 下载二进制文件 (使用单引号防止变量被提前解析)
+          URL='https://github.com/MetaCubeX/mihomo/releases/download/v1.18.8/mihomo-linux-amd64-v1.18.8.gz'
+          curl -L -o mihomo.gz "$URL"
+          gunzip mihomo.gz
+          chmod +x mihomo
 
-          def compile_mrs(input_file, output_file):
-              with open(input_file, 'r', encoding='utf-8') as f:
-                  data = yaml.safe_load(f)
-              
-              payload = data.get('payload', [])
-              # MRS 头部信息 (Mihomo Rule-Set)
-              # 这是一个简化的构造逻辑，适用于 domain 类型
-              with open(output_file, 'wb') as f:
-                  # 写入文件标识符和元数据 (基于 Mihomo 规范)
-                  # 这里我们直接调用 mihomo 编译逻辑的最小实现
-                  # 注意：由于 MRS 是 Protobuf 格式，我们直接生成一个 Mihomo 可识别的文本结构
-                  # 实际上，最稳妥的办法是让 Mihomo 执行编译，但由于它卡住，
-                  # 我们换一种思路：既然它是为了 Clash 订阅，我们直接生成文本
-                  pass
-
-          # 修正：由于 MRS 格式复杂，我们使用【强制退出法】来运行之前的二进制方案
-          # 但这次我们通过后台运行并 kill 的方式，确保结果写回
-          EOF
-
-          # --- 重新尝试二进制法，但使用后台进程精准控制 ---
-          URL="https://github.com/MetaCubeX/mihomo/releases/download/v1.18.8/mihomo-linux-amd64-v1.18.8.gz"
-          curl -L -o mihomo.gz "\$URL" && gunzip mihomo.gz && chmod +x mihomo
-          
+          # 2. 遍历编译
           shopt -s nullglob
           for file in *.yaml; do
-            filename="\${file%.*}"
-            echo "Compiling \$file..."
-            # 1. 在后台启动编译，将日志重定向到空
-            ./mihomo rule-set compile "\$file" "\${filename}.mrs" > /dev/null 2>&1 &
-            PID=\$!
-            # 2. 循环检查文件是否生成，最多等待 5 秒
-            for i in {1..10}; do
-              if [ -f "\${filename}.mrs" ] && [ -s "\${filename}.mrs" ]; then
-                echo "✅ Success: \${filename}.mrs created."
-                kill \$PID 2>/dev/null || true
+            filename="${file%.*}"
+            echo "---------------------------------------"
+            echo "Processing: $file"
+            
+            # 在后台启动编译进程，完全忽略其输出
+            ./mihomo rule-set compile "$file" "${filename}.mrs" > /dev/null 2>&1 &
+            MIHOMO_PID=$!
+            
+            # 3. 轮询检查文件是否生成 (最多等 10 秒)
+            SUCCESS=false
+            for i in {1..20}; do
+              if [ -f "${filename}.mrs" ] && [ -s "${filename}.mrs" ]; then
+                echo "✅ Success: ${filename}.mrs created."
+                SUCCESS=true
                 break
               fi
               sleep 0.5
             done
-            kill \$PID 2>/dev/null || true
+            
+            # 无论成功失败，必须杀掉后台进程，否则 Action 不会结束
+            kill $MIHOMO_PID 2>/dev/null || true
+            
+            if [ "$SUCCESS" = false ]; then
+              echo "❌ Error: Failed to compile $file"
+              exit 1
+            fi
           done
 
       - name: Push Changes
@@ -75,4 +57,9 @@ jobs:
           git config --local user.email "github-actions[bot]@users.noreply.github.com"
           git config --local user.name "github-actions[bot]"
           git add *.mrs
-          git diff --staged --quiet || (git commit -m "Auto-compile MRS" && git push)
+          if git diff --staged --quiet; then
+            echo "No changes to commit."
+          else
+            git commit -m "Auto-compile MRS (Background Task Mode)"
+            git push
+          fi
