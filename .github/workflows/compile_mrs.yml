@@ -14,16 +14,19 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Install Mihomo (Clash Meta)
+     - name: Install Mihomo (Clash Meta)
         run: |
-          # 获取包含 linux-amd64 且不包含 compatible 或 alpha 的稳定版
+          # 获取下载链接
           URL=$(curl -s https://api.github.com/repos/MetaCubeX/mihomo/releases/latest | jq -r '.assets[] | select(.name | contains("linux-amd64")) | select(.name | contains("compatible") | not) | select(.name | endswith(".gz")) | .browser_download_url' | head -n 1)
           echo "Downloading from: $URL"
-          if [ -z "$URL" ] || [ "$URL" == "null" ]; then echo "URL Fetch Failed"; exit 1; fi
+          
+          # 下载并强制解压到指定文件名
           curl -Lo mihomo.gz "$URL"
-          gunzip -d mihomo.gz
-          mv mihomo-linux-amd64* mihomo || mv mihomo-* mihomo
+          gunzip -c mihomo.gz > mihomo
+          
+          # 赋予执行权限并清理
           chmod +x mihomo
+          rm mihomo.gz
 
       - name: Compile YAML to MRS
         run: |
