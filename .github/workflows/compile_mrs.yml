@@ -18,39 +18,42 @@ jobs:
 
       - name: Install Rule-Set-Converter
         run: |
-          # 1. 自动定位最新的 linux-amd64 资产下载链接（不依赖拼接 URL）
-          ASSET_URL=$(curl -s https://api.github.com/repos/MetaCubeX/rule-set-converter/releases/latest | jq -r '.assets[] | select(.name | contains("linux-amd64")) | select(.name | endswith(".tar.gz")) | .browser_download_url' | head -n 1)
+          # 1. 绕过 API，直接使用 GitHub 最新的下载规律
+          # 这个链接会自动重定向到最新的稳定版
+          REPO="MetaCubeX/rule-set-converter"
           
-          echo "Found Asset URL: $ASSET_URL"
+          # 获取最新 tag 名（使用最稳健的 ls-remote 方式，不需要 API 权限）
+          TAG=$(git ls-remote --tags --refs --sort='v:refname' https://github.com/$REPO.git | tail -n1 | sed 's/.*\///')
+          echo "Latest Tag Found: $TAG"
           
-          # 2. 使用 -L 追踪重定向，下载真正的压缩包
-          curl -L -o converter.tar.gz "$ASSET_URL"
+          # 2. 拼接 URL 并尝试下载（处理可能存在的 v 前缀差异）
+          URL="https://github.com/$REPO/releases/download/${TAG}/rule-set-converter-linux-amd64.tar.gz"
+          echo "Attempting download: $URL"
           
-          # 3. 验证是否下载成功 (文件需大于 1MB)
-          if [ $(stat -c%s "converter.tar.gz") -lt 1000000 ]; then
-            echo "Error: Downloaded file is too small, likely not a binary."
-            exit 1
+          curl -L -o converter.tar.gz "$URL"
+          
+          # 3. 容错逻辑：如果上述下载不到，尝试带 tag 的文件名格式
+          if [ $(stat -c%s "converter.tar.gz") -lt 10000 ]; then
+             echo "Standard URL failed, trying tag-specific URL..."
+             URL="https://github.com/$REPO/releases/download/${TAG}/rule-set-converter-${TAG}-linux-amd64.tar.gz"
+             curl -L -o converter.tar.gz "$URL"
           fi
-          
-          # 4. 解压并寻找二进制文件
+
+          # 4. 解压并重命名可执行文件
           tar -xzf converter.tar.gz
-          # 搜索解压出的可执行文件并重命名为 converter
-          find . -maxdepth 1 -type f -name "rule-set-converter*" -not -name "*.tar.gz" -exec mv {} ./converter \;
+          find . -maxdepth 1 -type f -executable -not -name "*.tar.gz" -exec mv {} ./converter \;
           chmod +x converter
+          ./converter -h # 验证是否安装成功
 
       - name: Compile YAML to MRS
         run: |
-          # 只有存在 yaml 时才编译
           shopt -s nullglob
           for file in *.yaml; do
             filename="${file%.*}"
             echo "---------------------------------------"
             echo "Compiling: $file"
+            # 这里的 -type 设置为 domain，因为绝大部分 Clash 规则都是域名类
             ./converter -type domain -format mrs -input "$file" -output "${filename}.mrs"
-            
-            if [ -f "${filename}.mrs" ]; then
-              echo "Success: ${filename}.mrs created."
-            fi
           done
 
       - name: Push Changes
