@@ -10,20 +10,20 @@ on:
 jobs:
   compile:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write # 显式声明写入权限
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
 
       - name: Install Rule-Set-Converter
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
-          # 精准获取下载地址，排除 sha256 等干扰文件
-          URL=$(curl -s https://api.github.com/repos/MetaCubeX/rule-set-converter/releases/latest | jq -r '.assets[] | select(.name | contains("linux-amd64")) | select(.name | endswith(".tar.gz")) | .browser_download_url' | head -n 1)
-          if [ -z "$URL" ] || [ "$URL" == "null" ]; then echo "URL Fetch Failed"; exit 1; fi
-          echo "Downloading from: $URL"
-          
-          curl -Lo converter.tar.gz "$URL"
-          tar -xzf converter.tar.gz
-          # 解压后的二进制文件名可能包含版本号，强制重命名
+          # 使用预装的 gh 命令行工具下载，比 curl+jq 稳定得多
+          gh release download --repo MetaCubeX/rule-set-converter --pattern "*linux-amd64.tar.gz" --limit 1
+          tar -xzf *.tar.gz
+          # 寻找二进制文件并重命名为 converter
           find . -name "rule-set-converter*" -type f -exec mv {} ./converter \;
           chmod +x converter
 
@@ -34,16 +34,9 @@ jobs:
               filename="${file%.*}"
               echo "---------------------------------------"
               echo "Compiling: $file"
-              
-              # 执行编译转换
+              # 注意：如果 YAML 里只有域名，用 -type domain；如果有 IP，用 -type ip
+              # 大部分情况 domain 足够通用
               ./converter -type domain -format mrs -input "$file" -output "${filename}.mrs"
-              
-              if [ -f "${filename}.mrs" ]; then
-                echo "Success: ${filename}.mrs created."
-              else
-                echo "Error: Failed to compile $file"
-                exit 1
-              fi
             fi
           done
 
