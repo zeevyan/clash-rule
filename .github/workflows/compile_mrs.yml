@@ -16,10 +16,13 @@ jobs:
 
       - name: Install Mihomo (Clash Meta)
         run: |
-          # 获取最新 Mihomo 核心
-          URL=$(curl -s https://api.github.com/repos/MetaCubeX/mihomo/releases/latest | jq -r '.assets[] | select(.name | contains("linux-amd64")) | select(.name | contains("compatible") | not) | .browser_download_url')
+          # 获取包含 linux-amd64 且不包含 compatible 或 alpha 的稳定版
+          URL=$(curl -s https://api.github.com/repos/MetaCubeX/mihomo/releases/latest | jq -r '.assets[] | select(.name | contains("linux-amd64")) | select(.name | contains("compatible") | not) | select(.name | endswith(".gz")) | .browser_download_url' | head -n 1)
+          echo "Downloading from: $URL"
+          if [ -z "$URL" ] || [ "$URL" == "null" ]; then echo "URL Fetch Failed"; exit 1; fi
           curl -Lo mihomo.gz "$URL"
-          gunzip -c mihomo.gz > mihomo
+          gunzip -d mihomo.gz
+          mv mihomo-linux-amd64* mihomo || mv mihomo-* mihomo
           chmod +x mihomo
 
       - name: Compile YAML to MRS
@@ -28,7 +31,7 @@ jobs:
             if [ -f "$file" ]; then
               filename="${file%.*}"
               echo "Compiling $file to ${filename}.mrs..."
-              # 使用 mihomo 转换工具命令 (注意：取决于具体核心版本的子命令)
+              # Mihomo 编译命令：./mihomo rule-set compile <input_yaml> <output_mrs>
               ./mihomo rule-set compile "$file" "${filename}.mrs"
             fi
           done
@@ -38,5 +41,10 @@ jobs:
           git config --local user.email "github-actions[bot]@users.noreply.github.com"
           git config --local user.name "github-actions[bot]"
           git add *.mrs
-          git commit -m "Auto-compile Clash YAML to MRS" || echo "No changes to commit"
-          git push
+          # 检查是否有文件更改，避免没有更新时报错
+          if git diff --staged --quiet; then
+            echo "No changes to commit"
+          else
+            git commit -m "Auto-compile Clash YAML to MRS"
+            git push
+          fi
