@@ -1,10 +1,7 @@
 name: Compile Clash MRS
 on:
   push:
-    branches:
-      - main
-    paths:
-      - '**.yaml'
+    branches: [ main ]
   workflow_dispatch:
 
 jobs:
@@ -18,29 +15,21 @@ jobs:
 
       - name: Download Mihomo Binary
         run: |
-          # 下载特定版本的二进制文件，避开所有动态解析和 Docker 问题
           URL="https://github.com/MetaCubeX/mihomo/releases/download/v1.18.8/mihomo-linux-amd64-v1.18.8.gz"
-          echo "Downloading from: $URL"
           curl -L -o mihomo.gz "$URL"
           gunzip mihomo.gz
           chmod +x mihomo
-          ./mihomo -v # 验证二进制文件是否可用
 
       - name: Compile YAML to MRS
         run: |
           shopt -s nullglob
           for file in *.yaml; do
             filename="${file%.*}"
-            echo "---------------------------------------"
-            echo "Compiling: $file"
-            
-            # 使用二进制文件直接编译，绝不开启监听
-            ./mihomo rule-set compile "$file" "${filename}.mrs"
-            
+            echo "Processing $file..."
+            timeout 5s ./mihomo rule-set compile "$file" "${filename}.mrs" || true
             if [ -f "${filename}.mrs" ]; then
               echo "Success: ${filename}.mrs created."
             else
-              echo "Error: Failed to compile $file"
               exit 1
             fi
           done
@@ -50,9 +39,4 @@ jobs:
           git config --local user.email "github-actions[bot]@users.noreply.github.com"
           git config --local user.name "github-actions[bot]"
           git add *.mrs
-          if git diff --staged --quiet; then
-            echo "No changes to commit."
-          else
-            git commit -m "Auto-compile Clash YAML to MRS"
-            git push
-          fi
+          git diff --staged --quiet || (git commit -m "Auto-compile MRS" && git push)
