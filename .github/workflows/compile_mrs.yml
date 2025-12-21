@@ -11,7 +11,7 @@ jobs:
   compile:
     runs-on: ubuntu-latest
     permissions:
-      contents: write # 显式声明写入权限
+      contents: write
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
@@ -20,11 +20,12 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          # 使用预装的 gh 命令行工具下载，比 curl+jq 稳定得多
-          gh release download --repo MetaCubeX/rule-set-converter --pattern "*linux-amd64.tar.gz" --limit 1
+          # 使用 gh 下载，移除不支持的 --limit 参数
+          gh release download --repo MetaCubeX/rule-set-converter --pattern "*linux-amd64.tar.gz" --clobber
+          
           tar -xzf *.tar.gz
-          # 寻找二进制文件并重命名为 converter
-          find . -name "rule-set-converter*" -type f -exec mv {} ./converter \;
+          # 寻找解压后的二进制文件并重命名为 converter
+          find . -maxdepth 1 -name "rule-set-converter*" -not -name "*.tar.gz" -exec mv {} ./converter \;
           chmod +x converter
 
       - name: Compile YAML to MRS
@@ -34,9 +35,15 @@ jobs:
               filename="${file%.*}"
               echo "---------------------------------------"
               echo "Compiling: $file"
-              # 注意：如果 YAML 里只有域名，用 -type domain；如果有 IP，用 -type ip
-              # 大部分情况 domain 足够通用
+              # 使用转换工具生成 mrs
               ./converter -type domain -format mrs -input "$file" -output "${filename}.mrs"
+              
+              if [ -f "${filename}.mrs" ]; then
+                echo "Success: ${filename}.mrs created."
+              else
+                echo "Error: Failed to compile $file"
+                exit 1
+              fi
             fi
           done
 
