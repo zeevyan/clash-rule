@@ -18,33 +18,37 @@ jobs:
 
       - name: Install Rule-Set-Converter
         run: |
-          # 1. 直接下载特定的稳定版本链接，避免 API 报错和版本冲突
-          # 我们选择一个确定的版本，或者使用通用的 latest 自动重定向
-          VERSION="v1.1.0"
-          URL="https://github.com/MetaCubeX/rule-set-converter/releases/download/${VERSION}/rule-set-converter-linux-amd64.tar.gz"
-          
+          # 1. 使用 API 找到最新的稳定版 tag，并下载固定的资产名称
+          TAG=$(curl -s https://api.github.com/repos/MetaCubeX/rule-set-converter/releases/latest | jq -r .tag_name)
+          URL="https://github.com/MetaCubeX/rule-set-converter/releases/download/${TAG}/rule-set-converter-linux-amd64.tar.gz"
+          echo "Fetching Version: $TAG"
           echo "Downloading from: $URL"
-          curl -Lo converter.tar.gz "$URL"
           
-          # 2. 解压
+          # 2. 下载并检查文件大小（防止下载到 404 页面）
+          curl -L -o converter.tar.gz "$URL"
+          if [ $(stat -c%s "converter.tar.gz") -lt 1000 ]; then
+            echo "Download failed or file too small. Trying alternative naming..."
+            URL="https://github.com/MetaCubeX/rule-set-converter/releases/download/${TAG}/rule-set-converter-${TAG}-linux-amd64.tar.gz"
+            curl -L -o converter.tar.gz "$URL"
+          fi
+          
+          # 3. 解压并重命名
           tar -xzf converter.tar.gz
-          
-          # 3. 寻找二进制文件并重命名
-          # 查找当前目录下所有以 rule-set-converter 开头的文件并重命名为 converter
-          mv rule-set-converter-linux-amd64 converter || mv rule-set-converter converter || true
-          
+          find . -name "rule-set-converter*" -type f -not -name "*.tar.gz" -exec mv {} ./converter \;
           chmod +x converter
-          echo "Converter installed successfully."
 
       - name: Compile YAML to MRS
         run: |
+          # 检查是否存在 yaml 文件
+          ls *.yaml > /dev/null 2>&1 || (echo "No yaml files found"; exit 0)
+          
           for file in *.yaml; do
             if [ -f "$file" ]; then
               filename="${file%.*}"
               echo "---------------------------------------"
               echo "Compiling: $file"
               
-              # 执行转换：输入是 YAML，输出是 MRS
+              # 执行转换
               ./converter -type domain -format mrs -input "$file" -output "${filename}.mrs"
               
               if [ -f "${filename}.mrs" ]; then
