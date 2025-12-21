@@ -6,8 +6,9 @@
     { "tag": "🤖 AI 平台", "type": "selector", "outbounds": [ {providers_tags}, "DIRECT" ], "use_all_providers": true },
     { "tag": "🌍 国外媒体", "type": "selector", "outbounds": [ {providers_tags}, "DIRECT" ], "use_all_providers": true },
     { "tag": "🍎 苹果服务", "type": "selector", "outbounds": [ {providers_tags}, "DIRECT" ], "use_all_providers": true },
-    { "tag": "🚀 节点选择", "type": "selector", "outbounds": [ {providers_tags}, "DIRECT" ], "use_all_providers": true },
-    { "tag": "🧱 代理域名", "type": "selector", "outbounds": [ {providers_tags}, "DIRECT" ], "use_all_providers": true },
+    { "tag": "👑 微博", "type": "selector", "outbounds": [ {providers_tags}, "DIRECT" ], "use_all_providers": true },
+    { "tag": "🌍 Emby", "type": "selector", "outbounds": [ {providers_tags}, "DIRECT" ], "use_all_providers": true },
+    { "tag": "🎥 XPTV", "type": "selector", "outbounds": [ {providers_tags}, "DIRECT" ], "use_all_providers": true },
     { "tag": "🎯 全球直连", "type": "selector", "outbounds": [ "DIRECT", "🚀 节点选择" ] },
     { "tag": "🐟 漏网之鱼", "type": "selector", "outbounds": [ "🚀 节点选择", "DIRECT" ] },
     { "tag": "GLOBAL", "type": "selector", "outbounds": [ "🚀 节点选择", "DIRECT" ] },
@@ -19,7 +20,7 @@
       { "rule_set": [ "apple-cn" ], "outbound": "🍎 苹果服务" },
       { "rule_set": [ "media" ], "outbound": "🌍 国外媒体" },
       { "rule_set": [ "ai" ], "outbound": "🤖 AI 平台" },
-      { "rule_set": [ "proxy" ], "outbound": "🧱 代理域名" },
+      { "rule_set": [ "proxy" ], "outbound": "🚀 节点选择" },
       { "rule_set": [ "telegramip" ], "outbound": "📲 电报消息" },
       { "rule_set": [ "privateip" ], "outbound": "🎯 全球直连" },
       { "rule_set": [ "cn" ], "outbound": "🎯 全球直连" },
@@ -35,6 +36,27 @@
         "format": "binary",
         "path": "./ruleset/ads.srs",
         "url": "https://testingcf.jsdelivr.net/gh/DustinWin/ruleset_geodata@sing-box-ruleset/ads.srs"
+      },
+      {
+        "tag": "weibo",
+        "type": "remote",
+        "format": "binary",
+        "path": "./ruleset/weibo.srs",
+        "url": "https://github.com/zeevyan/singbox-rule/blob/main/weibo.srs"
+      },
+      {
+        "tag": "emby",
+        "type": "remote",
+        "format": "binary",
+        "path": "./ruleset/emby.srs",
+        "url": "https://github.com/zeevyan/singbox-rule/blob/main/weibo.srs"
+      },
+      {
+        "tag": "xptv",
+        "type": "remote",
+        "format": "binary",
+        "path": "./ruleset/xptv.srs",
+        "url": "https://github.com/zeevyan/singbox-rule/blob/main/weibo.srs"
       },
       {
         "tag": "apple-cn",
