@@ -4,34 +4,38 @@ on:
     branches:
       - main
     paths:
-      - '**.yaml'
-  workflow_dispatch:
+      - '**.yaml' # 只有当仓库中的 YAML 文件发生变动时才运行
+  workflow_dispatch: # 支持手动点击运行
 
 jobs:
   compile:
     runs-on: ubuntu-latest
     permissions:
-      contents: write
+      contents: write # 必须赋予写入权限，否则生成的 .mrs 无法推送到仓库
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
 
       - name: Compile YAML to MRS via Docker
         run: |
-          # 遍历所有 YAML 文件
+          # 开启 nullglob，防止没有 yaml 文件时循环报错
           shopt -s nullglob
+          
+          # 遍历根目录下所有的 yaml 文件
           for file in *.yaml; do
             filename="${file%.*}"
             echo "---------------------------------------"
             echo "Processing: $file"
             
-            # 使用 Mihomo 官方 Docker 镜像执行一次性编译命令
-            # -v 指定当前目录映射到容器内
-            docker run --rm -v $(pwd):/work -w /work metacubex/mihomo:latest \
-            mihomo rule-set compile "$file" "${filename}.mrs"
+            # 使用官方专用 rule-set-converter 镜像
+            # -v $(pwd):/work 将当前 GitHub 目录映射到容器
+            # -type domain 适用于绝大多数包含域名和关键词的规则集
+            docker run --rm -v $(pwd):/work -w /work metacubex/rule-set-converter:latest \
+            ./rule-set-converter -type domain -format mrs -input "$file" -output "${filename}.mrs"
             
+            # 检查编译是否真的产生了文件
             if [ -f "${filename}.mrs" ]; then
-              echo "Success: ${filename}.mrs created."
+              echo "Success: ${filename}.mrs has been generated."
             else
               echo "Error: Failed to compile $file"
               exit 1
@@ -40,11 +44,16 @@ jobs:
 
       - name: Push Changes
         run: |
+          # 配置 Git 机器人信息
           git config --local user.email "github-actions[bot]@users.noreply.github.com"
           git config --local user.name "github-actions[bot]"
+          
+          # 暂存生成的二进制文件
           git add *.mrs
+          
+          # 检查是否有文件更新，避免没有变动时提交报错
           if git diff --staged --quiet; then
-            echo "No changes to commit"
+            echo "No changes to commit."
           else
             git commit -m "Auto-compile Clash YAML to MRS via Docker"
             git push
