@@ -4,47 +4,50 @@ on:
     branches:
       - main
     paths:
-      - '**.yaml'
-  workflow_dispatch:
+      - '**.yaml' # 只有 YAML 文件变动时触发
+  workflow_dispatch: # 支持手动点击运行
 
 jobs:
   compile:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
+      - name: Checkout Code
         uses: actions/checkout@v4
 
-     - name: Install Mihomo (Clash Meta)
+      - name: Install Mihomo (Clash Meta)
         run: |
-          # 获取下载链接
+          # 1. 自动获取最新的 linux-amd64 非兼容版下载链接
           URL=$(curl -s https://api.github.com/repos/MetaCubeX/mihomo/releases/latest | jq -r '.assets[] | select(.name | contains("linux-amd64")) | select(.name | contains("compatible") | not) | select(.name | endswith(".gz")) | .browser_download_url' | head -n 1)
           echo "Downloading from: $URL"
           
-          # 下载并强制解压到指定文件名
+          # 2. 下载并直接解压为固定文件名 mihomo
           curl -Lo mihomo.gz "$URL"
           gunzip -c mihomo.gz > mihomo
           
-          # 赋予执行权限并清理
+          # 3. 赋予执行权限
           chmod +x mihomo
-          rm mihomo.gz
 
       - name: Compile YAML to MRS
         run: |
+          # 遍历仓库根目录下所有的 yaml 文件进行编译
           for file in *.yaml; do
             if [ -f "$file" ]; then
               filename="${file%.*}"
-              echo "Compiling $file to ${filename}.mrs..."
-              # Mihomo 编译命令：./mihomo rule-set compile <input_yaml> <output_mrs>
+              echo "Compiling $file to ${filename}.mrs ..."
               ./mihomo rule-set compile "$file" "${filename}.mrs"
             fi
           done
 
       - name: Push Changes
         run: |
+          # 配置 Git 机器人信息
           git config --local user.email "github-actions[bot]@users.noreply.github.com"
           git config --local user.name "github-actions[bot]"
+          
+          # 暂存生成的二进制文件
           git add *.mrs
-          # 检查是否有文件更改，避免没有更新时报错
+          
+          # 检查是否有内容变更，避免空提交导致报错
           if git diff --staged --quiet; then
             echo "No changes to commit"
           else
