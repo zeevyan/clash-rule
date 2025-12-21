@@ -13,33 +13,33 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: '3.x'
-
-      - name: Install Mihomo via Pip
+      - name: Download Mihomo Binary
         run: |
-          # 使用 mihomo 的 python 工具包，这专门用于处理规则转换
-          pip install mihomo
+          # 下载特定版本的二进制文件
+          URL="https://github.com/MetaCubeX/mihomo/releases/download/v1.18.8/mihomo-linux-amd64-v1.18.8.gz"
+          curl -L -o mihomo.gz "$URL"
+          gunzip mihomo.gz
+          chmod +x mihomo
 
       - name: Compile YAML to MRS
         run: |
-          python -c "
-          import os
-          from mihomo.ruleset import Compiler
-          
-          compiler = Compiler()
-          for file in os.listdir('.'):
-              if file.endswith('.yaml'):
-                  output = file.replace('.yaml', '.mrs')
-                  print(f'Compiling {file} -> {output}')
-                  try:
-                      compiler.compile(file, output)
-                      print(f'✅ Success')
-                  except Exception as e:
-                      print(f'❌ Failed: {e}')
-          "
+          shopt -s nullglob
+          for file in *.yaml; do
+            filename="${file%.*}"
+            echo "---------------------------------------"
+            echo "Compiling: $file"
+            
+            # 这里的 -c /dev/null 是制胜关键
+            # 它防止 mihomo 启动任何后台服务或监听 7890 端口
+            ./mihomo rule-set compile "$file" "${filename}.mrs" -c /dev/null
+            
+            if [ -f "${filename}.mrs" ]; then
+              echo "✅ Success: ${filename}.mrs created."
+            else
+              echo "❌ Error: Failed to generate ${filename}.mrs"
+              exit 1
+            fi
+          done
 
       - name: Push Changes
         run: |
@@ -47,8 +47,8 @@ jobs:
           git config --local user.name "github-actions[bot]"
           git add *.mrs
           if git diff --staged --quiet; then
-            echo "No changes"
+            echo "No changes to commit."
           else
-            git commit -m "Auto-compile MRS via Python"
+            git commit -m "Auto-compile MRS (Safe Mode)"
             git push
           fi
