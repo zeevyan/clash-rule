@@ -16,27 +16,26 @@ jobs:
 
       - name: Install Rule-Set-Converter
         run: |
-          # 获取最新的 rule-set-converter 专用转换工具
-          URL=$(curl -s https://api.github.com/repos/MetaCubeX/rule-set-converter/releases/latest | jq -r '.assets[] | select(.name | contains("linux-amd64")) | .browser_download_url' | head -n 1)
+          # 精准获取下载地址，排除 sha256 等干扰文件
+          URL=$(curl -s https://api.github.com/repos/MetaCubeX/rule-set-converter/releases/latest | jq -r '.assets[] | select(.name | contains("linux-amd64")) | select(.name | endswith(".tar.gz")) | .browser_download_url' | head -n 1)
+          if [ -z "$URL" ] || [ "$URL" == "null" ]; then echo "URL Fetch Failed"; exit 1; fi
           echo "Downloading from: $URL"
           
           curl -Lo converter.tar.gz "$URL"
           tar -xzf converter.tar.gz
-          # 确保可执行文件名为 converter
-          mv rule-set-converter* converter || true
+          # 解压后的二进制文件名可能包含版本号，强制重命名
+          find . -name "rule-set-converter*" -type f -exec mv {} ./converter \;
           chmod +x converter
 
       - name: Compile YAML to MRS
         run: |
-          # 遍历所有 yaml 文件进行编译
           for file in *.yaml; do
             if [ -f "$file" ]; then
               filename="${file%.*}"
               echo "---------------------------------------"
-              echo "Compiling: $file -> ${filename}.mrs"
+              echo "Compiling: $file"
               
-              # rule-set-converter 的标准用法
-              # -type 为规则类型，-format 为输出格式
+              # 执行编译转换
               ./converter -type domain -format mrs -input "$file" -output "${filename}.mrs"
               
               if [ -f "${filename}.mrs" ]; then
@@ -52,13 +51,10 @@ jobs:
         run: |
           git config --local user.email "github-actions[bot]@users.noreply.github.com"
           git config --local user.name "github-actions[bot]"
-          
-          # 添加所有生成的 mrs 文件
           git add *.mrs
-          
           if git diff --staged --quiet; then
             echo "No changes to commit"
           else
-            git commit -m "Auto-compile Clash YAML to MRS using converter"
+            git commit -m "Auto-compile Clash YAML to MRS"
             git push
           fi
