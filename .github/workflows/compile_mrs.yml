@@ -1,31 +1,4 @@
-name: Generate Mihomo Rulesets
-
-on:
-  push:
-    paths:
-      - '**.yaml'
-  workflow_dispatch:
-  schedule:
-    - cron: '0 2 * * *'
-
-jobs:
-  convert-rules:
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-
-    steps:
-      - name: Checkout Code
-        uses: actions/checkout@v4
-
-      - name: Prepare Mihomo Tool
-        run: |
-          mkdir -p ./tools/
-          curl -L https://github.com/DustinWin/proxy-tools/releases/download/mihomo/mihomo-meta-linux-amd64v3.tar.gz | tar -zx -C ./tools/
-          find ./tools/ -type f -not -name "*.tar.gz" -exec mv {} ./tools/mihomo \;
-          chmod +x ./tools/mihomo
-
-      - name: Convert YAML to MRS
+- name: Convert YAML to MRS
         run: |
           mkdir -p ./mrs/
           find . -maxdepth 2 -name "*.yaml" -not -path "./.*" -not -path "./tools/*" | while read -r file; do
@@ -35,52 +8,41 @@ jobs:
             echo "---------------------------------------"
             echo "正在处理: $file"
 
-            # 1. 自动检测规则类型 (修正优先级)
-            # 只要包含 DOMAIN / IP-CIDR / GEOIP 等关键词，即为经典规则 (Classical)
-            if grep -qE 'DOMAIN|IP-CIDR|GEOIP|IP-ASN|SRC-IP|DST-PORT|PROCESS-NAME' "$file"; then
+            # 1. 预清洗：删除空行，删除行首尾空格，确保 payload 格式正确
+            # 先提取 payload 之后的内容并去除杂质，存入临时文件
+            sed -n '/payload:/,$p' "$file" | grep -v "payload:" | sed 's/^[[:space:]]*- //g' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//' | grep -v '^#' | grep . > rules_cleaned.tmp
+
+            # 2. 判断该使用哪种模式
+            # 检查是否包含逗号 (经典规则特征)
+            if grep -q "," rules_cleaned.tmp; then
               TYPE="classical"
-            # 如果没有上述关键词，但有 IP 地址特征，则为纯 IP 规则 (Ipcidr)
-            elif grep -qE '([0-9]{1,3}\.){3}[0-9]{1,3}' "$file"; then
+            # 检查是否包含 IP 特征
+            elif grep -qE '([0-9]{1,3}\.){3}[0-9]{1,3}' rules_cleaned.tmp; then
               TYPE="ipcidr"
-            # 否则为纯域名规则 (Domain)
             else
               TYPE="domain"
             fi
 
-            # 2. 预处理 payload 头部
-            if ! grep -q "payload:" "$file"; then
-              echo "检测到缺少 payload 头部，正在自动补全..."
-              echo "payload:" > "$file.tmp"
-              cat "$file" >> "$file.tmp"
-              CONVERT_TARGET="$file.tmp"
-            else
-              CONVERT_TARGET="$file"
-            fi
+            # 3. 构造标准的转换源文件
+            echo "payload:" > ready_to_convert.yaml
+            sed 's/^/  - /' rules_cleaned.tmp >> ready_to_convert.yaml
 
-            # 3. 执行转换
+            # 4. 执行转换 (带错误捕获)
             OUTPUT="./mrs/${filename}.mrs"
-            echo "转换模式: [$TYPE] -> $OUTPUT"
+            echo "尝试转换模式: [$TYPE]"
             
-            if ./tools/mihomo convert-ruleset "$TYPE" yaml "$CONVERT_TARGET" "$OUTPUT"; then
+            if ! ./tools/mihomo convert-ruleset "$TYPE" yaml ready_to_convert.yaml "$OUTPUT" 2>err.log; then
+              echo "警告: $TYPE 模式转换崩溃或失败，尝试降级为 domain 模式..."
+              if ! ./tools/mihomo convert-ruleset "domain" yaml ready_to_convert.yaml "$OUTPUT" 2>>err.log; then
+                echo "最终失败: $file"
+                cat err.log
+              else
+                echo "降级转换成功 (domain)!"
+              fi
+            else
               SIZE=$(stat -c%s "$OUTPUT")
               echo "转换成功! 大小: $SIZE bytes"
-            else
-              echo "转换失败: $file"
             fi
-            
-            # 清理临时文件
-            [ -f "$file.tmp" ] && rm "$file.tmp"
-          done
 
-      - name: Commit and Push Changes
-        run: |
-          git config --local user.email "github-actions[bot]@users.noreply.github.com"
-          git config --local user.name "github-actions[bot]"
-          git add ./mrs/*.mrs
-          
-          if git diff --staged --quiet; then
-            echo "没有发现内容变化，跳过提交。"
-          else
-            git commit -m "auto: update binary rulesets $(date +'%Y-%m-%d %H:%M')"
-            git push
-          fi
+            rm -f rules_cleaned.tmp ready_to_convert.yaml err.log
+          done
