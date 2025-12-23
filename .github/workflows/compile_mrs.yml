@@ -1,18 +1,16 @@
-name: Generate Mihomo Rulesets
+name: Generate Mihomo Rulesets (In-place)
 
 on:
   push:
     paths:
-      - '**.yaml'          # 当有 yaml 文件变动时触发
-  workflow_dispatch:      # 支持手动触发
-  schedule:
-    - cron: '0 2 * * *'   # 每天凌晨 2:00 自动执行一次同步
+      - '**.yaml'
+  workflow_dispatch:
 
 jobs:
   convert-rules:
     runs-on: ubuntu-latest
     permissions:
-      contents: write     # 必须开启写入权限以提交文件
+      contents: write
 
     steps:
       - name: Checkout Code
@@ -21,32 +19,28 @@ jobs:
       - name: Prepare Mihomo Tool
         run: |
           mkdir -p ./tools/
-          # 下载 Mihomo 二进制工具
           curl -L https://github.com/DustinWin/proxy-tools/releases/download/mihomo/mihomo-meta-linux-amd64v3.tar.gz | tar -zx -C ./tools/
           mv -f ./tools/CrashCore ./tools/mihomo
           chmod +x ./tools/mihomo
 
-      - name: Convert YAML to MRS
+      - name: Convert YAML to MRS (In-place)
         run: |
-          # 创建输出目录
-          mkdir -p ./mrs/
-          
-          # 遍历根目录及子目录下的所有 .yaml 文件
-          # 排除隐藏目录、tools目录和工作流目录
+          # 遍历所有 .yaml 文件
           find . -name "*.yaml" -not -path "./.*" -not -path "./tools/*" -not -path "./.github/*" | while read file; do
             
+            # 获取目录路径和文件名（不含后缀）
+            dir_path=$(dirname "$file")
             filename=$(basename "${file%.*}")
             
-            # 排除常见的非规则文件
+            # 排除非规则文件
             if [[ "$filename" == "config" || "$filename" == "README" || "$filename" == "example" ]]; then
-              echo "跳过非规则文件: $file"
               continue
             fi
             
-            echo "正在转换: $file -> ./mrs/${filename}.mrs"
+            echo "正在转换: $file -> ${dir_path}/${filename}.mrs"
             
-            # 执行转换命令
-            ./tools/mihomo convert-ruleset domain yaml "$file" "./mrs/${filename}.mrs"
+            # 在原文件目录下生成 .mrs
+            ./tools/mihomo convert-ruleset domain yaml "$file" "${dir_path}/${filename}.mrs"
           done
 
       - name: Cleanup Tools
@@ -56,12 +50,13 @@ jobs:
         run: |
           git config --local user.email "github-actions[bot]@users.noreply.github.com"
           git config --local user.name "github-actions[bot]"
-          git add ./mrs/*.mrs
           
-          # 检查是否有文件更新，避免空提交报错
+          # 添加所有新生成的 .mrs 文件
+          git add **/*.mrs
+          
           if git diff --staged --quiet; then
-            echo "没有发现内容变化，跳过提交。"
+            echo "内容无变化，跳过提交。"
           else
-            git commit -m "Auto-generate .mrs rulesets: $(date +'%Y-%m-%d %H:%M')"
+            git commit -m "Auto-update .mrs rulesets (in-place): $(date +'%Y-%m-%d %H:%M')"
             git push
           fi
