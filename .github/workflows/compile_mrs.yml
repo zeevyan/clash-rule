@@ -1,48 +1,15 @@
-name: Generate Mihomo Rulesets
-
-on:
-  push:
-    paths:
-      - '**.yaml'
-  workflow_dispatch:
-  schedule:
-    - cron: '0 2 * * *'
-
-jobs:
-  convert-rules:
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-
-    steps:
-      - name: Checkout Code
-        uses: actions/checkout@v4
-
-      - name: Prepare Mihomo Tool
-        run: |
-          mkdir -p ./tools/
-          curl -L https://github.com/DustinWin/proxy-tools/releases/download/mihomo/mihomo-meta-linux-amd64v3.tar.gz | tar -zx -C ./tools/
-          find ./tools/ -type f -not -name "*.tar.gz" -exec mv {} ./tools/mihomo \;
-          chmod +x ./tools/mihomo
-
-      - name: Convert YAML to MRS
+- name: Convert YAML to MRS
         run: |
           mkdir -p ./mrs/
-          
-          # 查找 yaml 文件并开始循环
           find . -maxdepth 2 -name "*.yaml" -not -path "./.*" -not -path "./tools/*" | while read -r file; do
             filename=$(basename "${file%.*}")
-            
-            # 排除非规则文件
-            if [[ "$filename" =~ ^(config|README|example)$ ]]; then
-              continue
-            fi
+            if [[ "$filename" =~ ^(config|README|example)$ ]]; then continue; fi
 
             echo "---------------------------------------"
             echo "正在处理: $file"
 
-            # 1. 自动检测规则类型
-            if grep -qE '^(  - )?(DOMAIN|IP-CIDR|GEOIP|IP-ASN|SRC-IP|DST-PORT)' "$file"; then
+            # 1. 自动检测规则类型 (修正优先级)
+            if grep -qE 'DOMAIN|IP-CIDR|GEOIP|IP-ASN|SRC-IP|DST-PORT|PROCESS-NAME' "$file"; then
               TYPE="classical"
             elif grep -qE '([0-9]{1,3}\.){3}[0-9]{1,3}' "$file"; then
               TYPE="ipcidr"
@@ -50,9 +17,8 @@ jobs:
               TYPE="domain"
             fi
 
-            # 2. 预处理：确保文件包含 payload: 头部
+            # 2. 预处理 payload 头部
             if ! grep -q "payload:" "$file"; then
-              echo "检测到缺少 payload 头部，正在自动补全..."
               echo "payload:" > "$file.tmp"
               cat "$file" >> "$file.tmp"
               CONVERT_TARGET="$file.tmp"
@@ -66,28 +32,9 @@ jobs:
             
             if ./tools/mihomo convert-ruleset "$TYPE" yaml "$CONVERT_TARGET" "$OUTPUT"; then
               SIZE=$(stat -c%s "$OUTPUT")
-              echo "转换成功! 文件大小: $SIZE bytes"
+              echo "转换成功! 大小: $SIZE bytes"
             else
               echo "转换失败: $file"
             fi
-
-            # 清理临时文件
             [ -f "$file.tmp" ] && rm "$file.tmp"
           done
-          # 循环结束
-
-      - name: Cleanup Tools
-        run: rm -rf ./tools/
-
-      - name: Commit and Push Changes
-        run: |
-          git config --local user.email "github-actions[bot]@users.noreply.github.com"
-          git config --local user.name "github-actions[bot]"
-          git add ./mrs/*.mrs
-          
-          if git diff --staged --quiet; then
-            echo "没有发现内容变化，跳过提交。"
-          else
-            git commit -m "auto: update binary rulesets $(date +'%Y-%m-%d %H:%M')"
-            git push
-          fi
