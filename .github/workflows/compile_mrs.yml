@@ -21,9 +21,7 @@ jobs:
       - name: Prepare Mihomo Tool
         run: |
           mkdir -p ./tools/
-          # 下载 Mihomo 二进制工具 (使用 DustinWin 维护的版本)
           curl -L https://github.com/DustinWin/proxy-tools/releases/download/mihomo/mihomo-meta-linux-amd64v3.tar.gz | tar -zx -C ./tools/
-          # 寻找解压后的二进制文件并统一命名
           find ./tools/ -type f -not -name "*.tar.gz" -exec mv {} ./tools/mihomo \;
           chmod +x ./tools/mihomo
 
@@ -31,7 +29,7 @@ jobs:
         run: |
           mkdir -p ./mrs/
           
-          # 遍历所有 yaml 文件，排除隐藏目录和工具目录
+          # 查找 yaml 文件并开始循环
           find . -maxdepth 2 -name "*.yaml" -not -path "./.*" -not -path "./tools/*" | while read -r file; do
             filename=$(basename "${file%.*}")
             
@@ -43,24 +41,19 @@ jobs:
             echo "---------------------------------------"
             echo "正在处理: $file"
 
-            # 1. 自动检测规则类型 (Behavior Type)
-            # 检测是否包含经典规则特征 (如 DOMAIN-SUFFIX, IP-CIDR 等)
+            # 1. 自动检测规则类型
             if grep -qE '^(  - )?(DOMAIN|IP-CIDR|GEOIP|IP-ASN|SRC-IP|DST-PORT)' "$file"; then
               TYPE="classical"
-            # 检测是否包含 IP 地址特征 (x.x.x.x)
             elif grep -qE '([0-9]{1,3}\.){3}[0-9]{1,3}' "$file"; then
               TYPE="ipcidr"
-            # 默认为域名类型
             else
               TYPE="domain"
             fi
 
             # 2. 预处理：确保文件包含 payload: 头部
-            # 如果不包含，则创建一个带头部的临时文件
             if ! grep -q "payload:" "$file"; then
               echo "检测到缺少 payload 头部，正在自动补全..."
               echo "payload:" > "$file.tmp"
-              # 确保原有内容以列表格式追加
               cat "$file" >> "$file.tmp"
               CONVERT_TARGET="$file.tmp"
             else
@@ -71,4 +64,30 @@ jobs:
             OUTPUT="./mrs/${filename}.mrs"
             echo "转换模式: [$TYPE] -> $OUTPUT"
             
-            if ./
+            if ./tools/mihomo convert-ruleset "$TYPE" yaml "$CONVERT_TARGET" "$OUTPUT"; then
+              SIZE=$(stat -c%s "$OUTPUT")
+              echo "转换成功! 文件大小: $SIZE bytes"
+            else
+              echo "转换失败: $file"
+            fi
+
+            # 清理临时文件
+            [ -f "$file.tmp" ] && rm "$file.tmp"
+          done
+          # 循环结束
+
+      - name: Cleanup Tools
+        run: rm -rf ./tools/
+
+      - name: Commit and Push Changes
+        run: |
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+          git add ./mrs/*.mrs
+          
+          if git diff --staged --quiet; then
+            echo "没有发现内容变化，跳过提交。"
+          else
+            git commit -m "auto: update binary rulesets $(date +'%Y-%m-%d %H:%M')"
+            git push
+          fi
