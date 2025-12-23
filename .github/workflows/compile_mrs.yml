@@ -1,22 +1,27 @@
-name: Convert YAML to MRS
+name: Sync and Convert YAML to MRS
 on:
-  workflow_dispatch:
+  workflow_dispatch: # 支持手动触发
   schedule:
-    - cron: "0 19 * * *"
+    - cron: "0 19 * * *" # 每天北京时间凌晨 3 点运行
   push:
     branches:
       - master
+    paths-ignore:
+      - "**/README.md"
 
 jobs:
-  convert:
+  build:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write # 赋予推送分支和发布 Release 的权限
+
     steps:
-      - name: Set variables
+      - name: Set Variables
         run: |
           echo "update_version=$(date -d '+8 hours' +%Y-%m-%d)" >> ${GITHUB_ENV}
         shell: bash
 
-      - name: Checkout Zeevyan/clash-rule
+      - name: Checkout Zeevyan/clash-rule (Upstream)
         uses: actions/checkout@v4
         with:
           repository: zeevyan/clash-rule
@@ -24,40 +29,56 @@ jobs:
 
       - name: Setup Workspace
         run: |
-          mkdir -p ./mihomo-ruleset/
           mkdir -p ./tools/
+          mkdir -p ./mihomo-ruleset/
 
       - name: Download Mihomo Tool
         run: |
-          # 下载 Mihomo 编译工具
+          # 下载 DustinWin 提供的 Mihomo 编译工具 (Mihomo-Meta 内核)
           curl -L https://github.com/DustinWin/proxy-tools/releases/download/mihomo/mihomo-meta-linux-amd64v3.tar.gz | tar -zx -C ./tools/
+          # 转换重命名，确保可执行
           mv -f ./tools/CrashCore ./tools/mihomo
           chmod +x ./tools/mihomo
 
       - name: Convert YAML to MRS
         run: |
-          # 进入原始规则目录寻找所有 yaml 文件
-          cd raw-rules
-          # 查找所有 .yaml 文件并循环处理
-          # 排除可能会干扰的说明文件
-          find . -maxdepth 1 -name "*.yaml" ! -name "config.yaml" | while read -r file; do
-            filename=$(basename "$file" .yaml)
-            echo "正在转换: $filename ..."
-            ../tools/mihomo convert-ruleset domain yaml "$file" "../mihomo-ruleset/${filename}.mrs"
+          cd raw-rules/
+          # 遍历目录下所有 yaml 文件
+          for file in *.yaml; do
+            # 过滤掉非规则文件
+            [ "$file" == "config.yaml" ] && continue
+            
+            filename="${file%.*}"
+            echo "Processing: $file"
+
+            # 检查 YAML 内容以决定转换类型
+            # 如果文件中包含 IP-CIDR 字样，则使用 ipcidr 模式，否则使用 domain 模式
+            if grep -qi "IP-CIDR" "$file"; then
+              type="ipcidr"
+            else
+              type="domain"
+            fi
+
+            ../tools/mihomo convert-ruleset "$type" yaml "$file" "../mihomo-ruleset/${filename}.mrs"
+            
+            # 同时保留一份原始 yaml 文件在产物目录中
+            cp "$file" "../mihomo-ruleset/"
           done
 
-      - name: Release and Upload
+      - name: Release and Upload Assets
         uses: svenstaro/upload-release-action@v2
         with:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
-          release_name: mihomo-ruleset
+          release_name: "Mihomo-Ruleset-${{ env.update_version }}"
           tag: mihomo-ruleset
           overwrite: true
           body: |
-            自动转换自 zeevyan/clash-rule 的 .mrs 规则集
-            更新日期: ${{ env.update_version }}
+            ## Mihomo 二进制规则集 (.mrs)
+            - **同步来源**: [zeevyan/clash-rule](https://github.com/zeevyan/clash-rule)
+            - **更新时间**: ${{ env.update_version }}
+            - **使用说明**: 二进制格式可显著降低内存占用，提升内核启动速度。
           file_glob: true
-          file: ./mihomo-ruleset/*.mrs
+          file: ./mihomo-ruleset/*
 
       - name: Push to Branch
         run: |
@@ -65,8 +86,15 @@ jobs:
           git init
           git config --local user.email "github-actions[bot]@users.noreply.github.com"
           git config --local user.name "github-actions[bot]"
-          git checkout -b mrs-output
+          git checkout -b mihomo-ruleset
           git add .
-          git commit -m "Update MRS files from zeevyan/clash-rule ${update_version}"
+          git commit -m "Auto-update ruleset: ${update_version}"
           git remote add origin "https://${{ github.actor }}:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}"
-          git push -f origin mrs-output
+          git push -f origin mihomo-ruleset
+
+      - name: Purge jsDelivr CDN
+        run: |
+          cd ./mihomo-ruleset/
+          for file in $(ls); do
+            curl -i "https://purge.jsdelivr.net/gh/${{ github.repository }}@mihomo-ruleset/${file}"
+          done
