@@ -5,6 +5,8 @@ on:
     paths:
       - '**.yaml'
   workflow_dispatch:
+  schedule:
+    - cron: '0 2 * * *'
 
 jobs:
   convert-rules:
