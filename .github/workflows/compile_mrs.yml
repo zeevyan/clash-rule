@@ -1,48 +1,67 @@
-- name: Convert YAML to MRS
+name: Generate Mihomo Rulesets
+
+on:
+  push:
+    paths:
+      - '**.yaml'          # 当有 yaml 文件变动时触发
+  workflow_dispatch:      # 支持手动触发
+  schedule:
+    - cron: '0 2 * * *'   # 每天凌晨 2:00 自动执行一次同步
+
+jobs:
+  convert-rules:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write     # 必须开启写入权限以提交文件
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Prepare Mihomo Tool
         run: |
+          mkdir -p ./tools/
+          # 下载 Mihomo 二进制工具
+          curl -L https://github.com/DustinWin/proxy-tools/releases/download/mihomo/mihomo-meta-linux-amd64v3.tar.gz | tar -zx -C ./tools/
+          mv -f ./tools/CrashCore ./tools/mihomo
+          chmod +x ./tools/mihomo
+
+      - name: Convert YAML to MRS
+        run: |
+          # 创建输出目录
           mkdir -p ./mrs/
-          find . -maxdepth 2 -name "*.yaml" -not -path "./.*" -not -path "./tools/*" | while read -r file; do
-            filename=$(basename "${file%.*}")
-            if [[ "$filename" =~ ^(config|README|example)$ ]]; then continue; fi
-
-            echo "---------------------------------------"
-            echo "正在处理: $file"
-
-            # 1. 预清洗：删除空行，删除行首尾空格，确保 payload 格式正确
-            # 先提取 payload 之后的内容并去除杂质，存入临时文件
-            sed -n '/payload:/,$p' "$file" | grep -v "payload:" | sed 's/^[[:space:]]*- //g' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//' | grep -v '^#' | grep . > rules_cleaned.tmp
-
-            # 2. 判断该使用哪种模式
-            # 检查是否包含逗号 (经典规则特征)
-            if grep -q "," rules_cleaned.tmp; then
-              TYPE="classical"
-            # 检查是否包含 IP 特征
-            elif grep -qE '([0-9]{1,3}\.){3}[0-9]{1,3}' rules_cleaned.tmp; then
-              TYPE="ipcidr"
-            else
-              TYPE="domain"
-            fi
-
-            # 3. 构造标准的转换源文件
-            echo "payload:" > ready_to_convert.yaml
-            sed 's/^/  - /' rules_cleaned.tmp >> ready_to_convert.yaml
-
-            # 4. 执行转换 (带错误捕获)
-            OUTPUT="./mrs/${filename}.mrs"
-            echo "尝试转换模式: [$TYPE]"
+          
+          # 遍历根目录及子目录下的所有 .yaml 文件
+          # 排除隐藏目录、tools目录和工作流目录
+          find . -name "*.yaml" -not -path "./.*" -not -path "./tools/*" -not -path "./.github/*" | while read file; do
             
-            if ! ./tools/mihomo convert-ruleset "$TYPE" yaml ready_to_convert.yaml "$OUTPUT" 2>err.log; then
-              echo "警告: $TYPE 模式转换崩溃或失败，尝试降级为 domain 模式..."
-              if ! ./tools/mihomo convert-ruleset "domain" yaml ready_to_convert.yaml "$OUTPUT" 2>>err.log; then
-                echo "最终失败: $file"
-                cat err.log
-              else
-                echo "降级转换成功 (domain)!"
-              fi
-            else
-              SIZE=$(stat -c%s "$OUTPUT")
-              echo "转换成功! 大小: $SIZE bytes"
+            filename=$(basename "${file%.*}")
+            
+            # 排除常见的非规则文件
+            if [[ "$filename" == "config" || "$filename" == "README" || "$filename" == "example" ]]; then
+              echo "跳过非规则文件: $file"
+              continue
             fi
-
-            rm -f rules_cleaned.tmp ready_to_convert.yaml err.log
+            
+            echo "正在转换: $file -> ./mrs/${filename}.mrs"
+            
+            # 执行转换命令
+            ./tools/mihomo convert-ruleset domain yaml "$file" "./mrs/${filename}.mrs"
           done
+
+      - name: Cleanup Tools
+        run: rm -rf ./tools/
+
+      - name: Commit and Push Changes
+        run: |
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+          git add ./mrs/*.mrs
+          
+          # 检查是否有文件更新，避免空提交报错
+          if git diff --staged --quiet; then
+            echo "没有发现内容变化，跳过提交。"
+          else
+            git commit -m "Auto-generate .mrs rulesets: $(date +'%Y-%m-%d %H:%M')"
+            git push
+          fi
