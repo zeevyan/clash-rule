@@ -3,16 +3,14 @@ name: Generate Mihomo Rulesets
 on:
   push:
     paths:
-      - '**.yaml'          # 当有 yaml 文件变动时触发
-  workflow_dispatch:      # 支持手动触发
-  schedule:
-    - cron: '0 2 * * *'   # 每天凌晨 2:00 自动执行一次同步
+      - '**.yaml'
+  workflow_dispatch:
 
 jobs:
   convert-rules:
     runs-on: ubuntu-latest
     permissions:
-      contents: write     # 必须开启写入权限以提交文件
+      contents: write
 
     steps:
       - name: Checkout Code
@@ -21,47 +19,62 @@ jobs:
       - name: Prepare Mihomo Tool
         run: |
           mkdir -p ./tools/
-          # 下载 Mihomo 二进制工具
+          # 下载最新的 Mihomo Meta 核心
           curl -L https://github.com/DustinWin/proxy-tools/releases/download/mihomo/mihomo-meta-linux-amd64v3.tar.gz | tar -zx -C ./tools/
-          mv -f ./tools/CrashCore ./tools/mihomo
+          find ./tools/ -type f -not -name "*.tar.gz" -exec mv {} ./tools/mihomo \;
           chmod +x ./tools/mihomo
 
-      - name: Convert YAML to MRS
+      - name: Convert and Validate
         run: |
-          # 创建输出目录
           mkdir -p ./mrs/
           
-          # 遍历根目录及子目录下的所有 .yaml 文件
-          # 排除隐藏目录、tools目录和工作流目录
-          find . -name "*.yaml" -not -path "./.*" -not -path "./tools/*" -not -path "./.github/*" | while read file; do
-            
+          find . -name "*.yaml" -not -path "./.*" -not -path "./tools/*" | while read -r file; do
             filename=$(basename "${file%.*}")
-            
-            # 排除常见的非规则文件
-            if [[ "$filename" == "config" || "$filename" == "README" || "$filename" == "example" ]]; then
-              echo "跳过非规则文件: $file"
-              continue
+            if [[ "$filename" =~ ^(config|README|example)$ ]]; then continue; fi
+
+            echo "---------------------------------------"
+            echo "正在处理文件: $file"
+
+            # 1. 自动检测类型：检测内容中是否包含 CIDR 或纯 IP 特征
+            # 匹配模式：数字.数字.数字.数字/掩码 或 纯IP
+            if grep -qE '([0-9]{1,3}\.){3}[0-9]{1,3}(/[0-9]+)?' "$file"; then
+              TYPE="ip"
+            else
+              TYPE="domain"
             fi
-            
-            echo "正在转换: $file -> ./mrs/${filename}.mrs"
-            
-            # 执行转换命令
-            ./tools/mihomo convert-ruleset domain yaml "$file" "./mrs/${filename}.mrs"
+
+            # 2. 格式预检查：Mihomo 要求必须有 payload 字段
+            if ! grep -q "payload:" "$file"; then
+              echo "错误: $file 缺少 'payload:' 头部，Mihomo 无法转换！"
+              echo "尝试临时补全 payload 头部进行转换..."
+              sed -i '1i payload:' "$file"
+            fi
+
+            # 3. 执行转换
+            OUTPUT="./mrs/${filename}.mrs"
+            ./tools/mihomo convert-ruleset "$TYPE" yaml "$file" "$OUTPUT"
+
+            # 4. 验证生成结果
+            if [ -f "$OUTPUT" ]; then
+              SIZE=$(stat -c%s "$OUTPUT")
+              if [ "$SIZE" -le 100 ]; then
+                echo "警告: 生成的 $OUTPUT 文件过小 ($SIZE bytes)，可能转换失败！"
+              else
+                echo "成功: [$TYPE] -> $OUTPUT ($SIZE bytes)"
+              fi
+            else
+              echo "失败: 未能生成 $OUTPUT"
+            fi
           done
 
-      - name: Cleanup Tools
-        run: rm -rf ./tools/
-
-      - name: Commit and Push Changes
+      - name: Commit and Push
         run: |
           git config --local user.email "github-actions[bot]@users.noreply.github.com"
           git config --local user.name "github-actions[bot]"
           git add ./mrs/*.mrs
-          
-          # 检查是否有文件更新，避免空提交报错
           if git diff --staged --quiet; then
-            echo "没有发现内容变化，跳过提交。"
+            echo "无变化"
           else
-            git commit -m "Auto-generate .mrs rulesets: $(date +'%Y-%m-%d %H:%M')"
+            git commit -m "chore: auto-generate valid mrs rulesets"
             git push
           fi
