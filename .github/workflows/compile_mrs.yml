@@ -1,74 +1,72 @@
-name: Compile Clash MRS
+name: Convert YAML to MRS
 on:
-  push:
-    branches: [ main ]
-    paths:
-      - '**.yaml'
   workflow_dispatch:
+  schedule:
+    - cron: "0 19 * * *"
+  push:
+    branches:
+      - master
 
 jobs:
-  compile:
+  convert:
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
     steps:
-      - name: Checkout Code
-        uses: actions/checkout@v4
-
-      - name: Compile With Debug Log
+      - name: Set variables
         run: |
-          # 1. 下载并准备二进制文件
-          echo "Downloading Mihomo..."
-          URL='https://github.com/MetaCubeX/mihomo/releases/download/v1.18.8/mihomo-linux-amd64-v1.18.8.gz'
-          curl -L -o mihomo.gz "$URL"
-          gunzip mihomo.gz
-          chmod +x mihomo
+          echo "update_version=$(date -d '+8 hours' +%Y-%m-%d)" >> ${GITHUB_ENV}
+        shell: bash
 
-          # 2. 遍历 YAML 文件
-          shopt -s nullglob
-          for file in *.yaml; do
-            filename="${file%.*}"
-            echo "---------------------------------------"
-            echo "Processing: $file"
-            
-            # 3. 启动编译并将日志保存到 compile_debug.log
-            # 注意：此处必须重定向，否则后台进程会污染标准输出
-            ./mihomo rule-set compile "$file" "${filename}.mrs" > compile_debug.log 2>&1 &
-            MIHOMO_PID=$!
-            
-            # 4. 轮询检查文件生成
-            SUCCESS=false
-            for i in {1..30}; do
-              if [ -f "${filename}.mrs" ] && [ -s "${filename}.mrs" ]; then
-                echo "✅ Success: ${filename}.mrs created."
-                SUCCESS=true
-                break
-              fi
-              sleep 0.5
-            done
-            
-            # 5. 如果失败，打印具体的错误原因
-            if [ "$SUCCESS" = false ]; then
-              echo "❌ Error: Failed to compile $file"
-              echo "===== DEBUG LOG FROM MIHOMO ====="
-              cat compile_debug.log
-              echo "=================================="
-              kill $MIHOMO_PID 2>/dev/null || true
-              exit 1
-            fi
-            
-            # 任务完成，清理进程
-            kill $MIHOMO_PID 2>/dev/null || true
+      - name: Checkout Zeevyan/clash-rule
+        uses: actions/checkout@v4
+        with:
+          repository: zeevyan/clash-rule
+          path: raw-rules
+
+      - name: Setup Workspace
+        run: |
+          mkdir -p ./mihomo-ruleset/
+          mkdir -p ./tools/
+
+      - name: Download Mihomo Tool
+        run: |
+          # 下载 Mihomo 编译工具
+          curl -L https://github.com/DustinWin/proxy-tools/releases/download/mihomo/mihomo-meta-linux-amd64v3.tar.gz | tar -zx -C ./tools/
+          mv -f ./tools/CrashCore ./tools/mihomo
+          chmod +x ./tools/mihomo
+
+      - name: Convert YAML to MRS
+        run: |
+          # 进入原始规则目录寻找所有 yaml 文件
+          cd raw-rules
+          # 查找所有 .yaml 文件并循环处理
+          # 排除可能会干扰的说明文件
+          find . -maxdepth 1 -name "*.yaml" ! -name "config.yaml" | while read -r file; do
+            filename=$(basename "$file" .yaml)
+            echo "正在转换: $filename ..."
+            ../tools/mihomo convert-ruleset domain yaml "$file" "../mihomo-ruleset/${filename}.mrs"
           done
 
-      - name: Push Changes
+      - name: Release and Upload
+        uses: svenstaro/upload-release-action@v2
+        with:
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          release_name: mihomo-ruleset
+          tag: mihomo-ruleset
+          overwrite: true
+          body: |
+            自动转换自 zeevyan/clash-rule 的 .mrs 规则集
+            更新日期: ${{ env.update_version }}
+          file_glob: true
+          file: ./mihomo-ruleset/*.mrs
+
+      - name: Push to Branch
         run: |
+          cd ./mihomo-ruleset/
+          git init
           git config --local user.email "github-actions[bot]@users.noreply.github.com"
           git config --local user.name "github-actions[bot]"
-          git add *.mrs
-          if git diff --staged --quiet; then
-            echo "No changes to commit."
-          else
-            git commit -m "Auto-compile MRS rules (Debug Mode)"
-            git push
-          fi
+          git checkout -b mrs-output
+          git add .
+          git commit -m "Update MRS files from zeevyan/clash-rule ${update_version}"
+          git remote add origin "https://${{ github.actor }}:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}"
+          git push -f origin mrs-output
