@@ -10,4 +10,5 @@ payload:
  - DOMAIN-SUFFIX,public.shrekmedia.org
  - DOMAIN-SUFFIX,v1.uhdnow.com
  - DOMAIN-SUFFIX,global.uhdnow.com
+ - DOMAIN-SUFFIX,uhdnow.com
  - USER-AGENT,VidHub*
